@@ -1,0 +1,4467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritz-Weaselton v2.12</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold: #c4a052;
+            --orange: #e85d04;
+            --dark: #1c1c1c;
+            --warm-gray: #f5f3f0;
+            --text: #333;
+            --light-text: #6b6b6b;
+            --border: #e0dcd7;
+            --green: #2e7d32;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: var(--warm-gray);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        /* Base logo and controls styles */
+        .logo-icon { width: 80px; height: auto; object-fit: contain; }
+        .logo-text {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .version-badge {
+            background: var(--warm-gray);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--light-text);
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .settings-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .settings-btn:hover {
+            background: #f0f0f0;
+        }
+        .settings-btn svg {
+            width: 20px;
+            height: 20px;
+            color: var(--light-text);
+        }
+
+        /* Code Selector Modal */
+        .code-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .code-modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .code-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 90vw;
+            max-width: 1000px;
+            height: 80vh;
+            max-height: 800px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        .code-modal.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .code-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-modal-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .code-modal-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .currency-select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+        }
+        .code-modal-close {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+        }
+        .code-modal-close:hover {
+            background: #f0f0f0;
+        }
+        .code-modal-close svg {
+            width: 20px;
+            height: 20px;
+            color: var(--light-text);
+        }
+        .code-modal-body {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Sidebar */
+        .code-modal-sidebar {
+            width: 220px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--warm-gray);
+        }
+        .preset-section {
+            padding: 20px;
+            flex: 1;
+        }
+        .preset-section h4 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--light-text);
+            margin-bottom: 12px;
+        }
+        .preset-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .preset-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .preset-btn:hover {
+            border-color: var(--gold);
+            box-shadow: 0 2px 8px rgba(196, 160, 82, 0.15);
+        }
+        .preset-btn.active {
+            border-color: var(--gold);
+            background: #fdf8ed;
+        }
+        .preset-icon {
+            font-size: 16px;
+        }
+        .preset-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .preset-count {
+            font-size: 11px;
+            color: var(--light-text);
+            background: var(--warm-gray);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .selection-summary {
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            background: white;
+        }
+        .selection-count-display {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .selection-number {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--green);
+        }
+        .selection-max {
+            font-size: 16px;
+            color: var(--light-text);
+        }
+        .selection-bar-container {
+            height: 6px;
+            background: #e8e8e8;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .selection-bar {
+            height: 100%;
+            background: var(--green);
+            border-radius: 3px;
+            transition: width 0.3s, background 0.3s;
+        }
+        .selection-bar.warning {
+            background: var(--orange);
+        }
+        .selection-bar.limit {
+            background: #f44336;
+        }
+        .selection-estimate {
+            font-size: 12px;
+            color: var(--light-text);
+            text-align: center;
+        }
+
+        .sidebar-actions {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn-clear-all, .btn-save-preset {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-clear-all {
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-clear-all:hover {
+            border-color: #f44336;
+            color: #f44336;
+        }
+        .btn-save-preset {
+            background: var(--gold);
+            border: none;
+            color: white;
+        }
+        .btn-save-preset:hover {
+            background: #b08d3e;
+        }
+
+        /* Main content */
+        .code-modal-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            padding: 20px;
+            overflow: hidden;
+        }
+        .code-search-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--warm-gray);
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+        .code-search-bar svg {
+            width: 18px;
+            height: 18px;
+            color: var(--light-text);
+            flex-shrink: 0;
+        }
+        .code-search-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            outline: none;
+        }
+        .code-search-bar input::placeholder {
+            color: #999;
+        }
+
+        /* Codes Grid */
+        .codes-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        .code-section-title {
+            grid-column: 1 / -1;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gold);
+            padding: 12px 0 8px;
+            border-bottom: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        .code-section-title:first-child {
+            margin-top: 0;
+        }
+        .code-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--warm-gray);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .code-card:hover {
+            background: #e8e5e0;
+        }
+        .code-card.selected {
+            background: #e8f5e9;
+            border-color: var(--green);
+        }
+        .code-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .code-card-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .code-card.selected .code-card-checkbox {
+            background: var(--green);
+            border-color: var(--green);
+        }
+        .code-card-checkbox svg {
+            width: 12px;
+            height: 12px;
+            stroke: white;
+            opacity: 0;
+        }
+        .code-card.selected .code-card-checkbox svg {
+            opacity: 1;
+        }
+        .code-card-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .code-card-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--light-text);
+        }
+        .code-card.selected .code-card-icon {
+            background: rgba(46, 125, 50, 0.1);
+        }
+        .code-card.selected .code-card-icon svg {
+            stroke: var(--green);
+        }
+        .code-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .code-card-code {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        .code-card-company {
+            font-size: 11px;
+            color: var(--light-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .code-card-badges {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .code-card-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .code-card-badge.recommended {
+            background: #fff3e0;
+            color: var(--orange);
+        }
+        .code-card-badge.favorite {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .code-card-favorite {
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.3;
+            transition: opacity 0.2s, transform 0.2s;
+            flex-shrink: 0;
+        }
+        .code-card-favorite:hover {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+        .code-card-favorite.active {
+            opacity: 1;
+        }
+
+        /* Add code section */
+        .add-code-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .add-code-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 13px;
+            color: var(--light-text);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .add-code-toggle:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        .add-code-toggle svg {
+            width: 16px;
+            height: 16px;
+        }
+        .add-code-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .add-code-form input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .add-code-form input:first-child {
+            max-width: 100px;
+            font-family: 'SF Mono', Monaco, monospace;
+            text-transform: uppercase;
+        }
+        .add-code-form input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+        .btn-add-code {
+            padding: 10px 20px;
+            background: var(--gold);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-add-code:hover {
+            background: #b08d3e;
+        }
+
+        /* Mobile responsive for modal */
+        @media (max-width: 768px) {
+            .code-modal {
+                width: 100vw;
+                height: 100vh;
+                max-width: none;
+                max-height: none;
+                border-radius: 0;
+            }
+            .code-modal-body {
+                flex-direction: column;
+            }
+            .code-modal-sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 12px;
+            }
+            .preset-section {
+                flex: 1;
+                padding: 0;
+            }
+            .preset-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .preset-btn {
+                flex: 0 1 auto;
+                padding: 8px 12px;
+            }
+            .selection-summary {
+                display: none;
+            }
+            .sidebar-actions {
+                flex-direction: row;
+                padding: 0;
+                border-top: none;
+            }
+            .codes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+        }
+
+        /* Search Section */
+        .search-section {
+            background: #FCFCFC;
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Logo on left */
+        .search-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .search-logo .logo-icon {
+            width: 48px;
+            height: auto;
+        }
+        .search-logo .logo-text {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        /* Divider */
+        .search-divider {
+            display: none;
+        }
+
+        /* Search fields container */
+        .search-fields {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex: 1;
+        }
+
+        .search-field {
+            flex: 1;
+        }
+        .search-field.destination {
+            flex: 2;
+        }
+        .search-field label {
+            display: none;
+        }
+        .search-field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            height: 38px;
+        }
+        .search-field input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        /* Controls on right */
+        .search-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .search-controls .version-badge {
+            background: var(--warm-gray);
+            border: 1px solid var(--border);
+            color: var(--light-text);
+            padding: 0 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: 'SF Mono', Monaco, monospace;
+            height: 38px;
+            line-height: 36px;
+        }
+        .search-controls .settings-btn {
+            background: var(--warm-gray);
+            border: 1px solid var(--border);
+            width: 38px;
+            height: 38px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-controls .settings-btn:hover {
+            background: #e8e6e3;
+        }
+        .search-controls .settings-btn svg {
+            width: 18px;
+            height: 18px;
+            color: var(--light-text);
+        }
+        .codes-count-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--warm-gray);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            color: var(--light-text);
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .codes-count-badge:hover {
+            background: #e8e6e3;
+        }
+        .codes-count-badge .count {
+            font-weight: 600;
+            color: var(--green);
+        }
+        .codes-count-badge svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Autocomplete Dropdown */
+        .autocomplete-wrapper {
+            position: relative;
+        }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-height: 320px;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+        }
+        .autocomplete-dropdown.open {
+            display: block;
+        }
+        .autocomplete-item {
+            padding: 12px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover {
+            background: var(--warm-gray);
+        }
+        .autocomplete-item.selected {
+            background: var(--warm-gray);
+        }
+        .autocomplete-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .autocomplete-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--light-text);
+        }
+        .autocomplete-icon.city { background: #e3f2fd; }
+        .autocomplete-icon.city svg { stroke: #1565c0; }
+        .autocomplete-icon.landmark { background: #fff3e0; }
+        .autocomplete-icon.landmark svg { stroke: var(--orange); }
+        .autocomplete-icon.airport { background: #f3e5f5; }
+        .autocomplete-icon.airport svg { stroke: #7b1fa2; }
+        .autocomplete-text {
+            flex: 1;
+            min-width: 0;
+        }
+        .autocomplete-main {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .autocomplete-sub {
+            font-size: 12px;
+            color: var(--light-text);
+            margin-top: 2px;
+        }
+
+        /* Date Range Picker */
+        .date-range-picker {
+            position: relative;
+        }
+        .date-range-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            background: white;
+            min-width: 200px;
+            height: 38px;
+        }
+        .date-range-display:hover {
+            border-color: var(--gold);
+        }
+        .date-range-display svg {
+            width: 18px;
+            height: 18px;
+            color: var(--light-text);
+            flex-shrink: 0;
+        }
+        .date-range-text {
+            flex: 1;
+            font-size: 13px;
+        }
+        .date-range-text .nights {
+            color: var(--light-text);
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .date-range-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            padding: 20px;
+            z-index: 100;
+            display: none;
+            min-width: 320px;
+        }
+        .date-range-dropdown.open {
+            display: block;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .calendar-header button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+        }
+        .calendar-header button:hover {
+            background: #f0f0f0;
+        }
+        .calendar-header svg {
+            width: 16px;
+            height: 16px;
+        }
+        .calendar-month {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .calendar-day-header {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--light-text);
+            padding: 8px 0;
+        }
+        .calendar-day {
+            text-align: center;
+            padding: 10px 8px;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .calendar-day:hover:not(.disabled):not(.empty) {
+            background: var(--warm-gray);
+        }
+        .calendar-day.empty {
+            cursor: default;
+        }
+        .calendar-day.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        .calendar-day.selected {
+            background: var(--orange);
+            color: white;
+        }
+        .calendar-day.in-range {
+            background: #fff3e0;
+        }
+        .calendar-day.range-start {
+            background: var(--orange);
+            color: white;
+            border-radius: 6px 0 0 6px;
+        }
+        .calendar-day.range-end {
+            background: var(--orange);
+            color: white;
+            border-radius: 0 6px 6px 0;
+        }
+        .calendar-day.range-start.range-end {
+            border-radius: 6px;
+        }
+        .date-range-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .nights-display {
+            font-size: 13px;
+            color: var(--light-text);
+        }
+        .nights-display strong {
+            color: var(--text);
+        }
+        .date-apply-btn {
+            padding: 8px 16px;
+            background: var(--orange);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .date-apply-btn:hover {
+            background: #d14f00;
+        }
+
+        .btn-search {
+            padding: 10px 24px;
+            background: var(--orange);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            height: 38px;
+        }
+        .btn-search:hover { background: #d14f00; }
+        .btn-search:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Results Section */
+        .results-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 40px;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .result-count {
+            font-size: 14px;
+            color: var(--light-text);
+        }
+
+        .status-pill {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-pill.loading {
+            background: #fff3e0;
+            color: var(--orange);
+        }
+        .status-pill.ready {
+            background: #e8f5e9;
+            color: var(--green);
+        }
+
+        .toolbar-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .view-toggle {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .view-toggle button {
+            padding: 8px 14px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--light-text);
+        }
+        .view-toggle button.active {
+            background: var(--dark);
+            color: white;
+        }
+
+        .toolbar select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+
+        /* Loading State with Steps */
+        .loading-container {
+            text-align: center;
+            padding: 60px 24px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .loading-container h3 {
+            font-size: 20px;
+            margin-bottom: 24px;
+        }
+
+        .progress-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .step-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+        .step-icon.pending {
+            background: #f0f0f0;
+        }
+        .step-icon.pending svg {
+            stroke: #999;
+        }
+        .step-icon.active {
+            background: var(--orange);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .step-icon.active svg {
+            stroke: white;
+        }
+        .step-icon.done {
+            background: var(--green);
+        }
+        .step-icon.done svg {
+            stroke: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .step-content { flex: 1; }
+        .step-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        .step-desc {
+            font-size: 12px;
+            color: var(--light-text);
+        }
+
+        .step.pending .step-title { color: #999; }
+        .step.active .step-title { color: var(--orange); }
+        .step.done .step-title { color: var(--green); }
+
+        /* Batch Progress UI */
+        .batch-progress-container {
+            text-align: center;
+            padding: 48px 24px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .batch-progress-container h3 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .batch-subtitle {
+            font-size: 14px;
+            color: var(--light-text);
+            margin-bottom: 32px;
+        }
+
+        .batch-overall-progress {
+            margin-bottom: 32px;
+        }
+        .batch-progress-bar {
+            height: 8px;
+            background: #e8e8e8;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .batch-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--orange), var(--gold));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .batch-progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        #batchProgressPercent {
+            font-weight: 600;
+            color: var(--orange);
+        }
+        #batchProgressEta {
+            color: var(--light-text);
+        }
+
+        .batch-steps {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+        .batch-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+        }
+        .batch-step.pending {
+            opacity: 0.5;
+        }
+        .batch-step.active {
+            box-shadow: 0 4px 12px rgba(232, 93, 4, 0.2);
+            border: 2px solid var(--orange);
+        }
+        .batch-step.done {
+            background: var(--green);
+            color: white;
+        }
+        .batch-step-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .batch-step.active .batch-step-indicator {
+            background: var(--orange);
+            color: white;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .batch-step.done .batch-step-indicator {
+            background: rgba(255,255,255,0.2);
+        }
+        .batch-step.done .batch-step-indicator svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+        }
+        .batch-step-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+        .batch-step-label {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .batch-step-codes {
+            font-size: 11px;
+            color: var(--light-text);
+        }
+        .batch-step.done .batch-step-codes {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .batch-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 24px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 24px;
+        }
+        .batch-status-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--orange);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .batch-status-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+        }
+        .batch-status-text {
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .batch-preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .batch-preview-label {
+            color: var(--light-text);
+        }
+        .batch-preview-count {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--green);
+        }
+
+        /* Empty State / Landing */
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--light-text);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .empty-state h3 {
+            font-size: 24px;
+            color: var(--text);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .empty-state .tagline {
+            font-size: 15px;
+            color: var(--light-text);
+            margin-bottom: 40px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+            text-align: left;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .feature-card .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .feature-card .feature-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--orange);
+        }
+        .feature-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            font-size: 13px;
+            color: var(--light-text);
+            line-height: 1.5;
+        }
+        .setup-notice {
+            background: #fffbf0;
+            border: 1px solid #ffe4b2;
+            border-radius: 10px;
+            padding: 20px 24px;
+            text-align: left;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            position: relative;
+        }
+        .setup-notice.hidden {
+            display: none;
+        }
+        .setup-notice-dismiss {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .setup-notice-dismiss:hover {
+            opacity: 1;
+        }
+        .setup-notice-dismiss svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text);
+        }
+        .setup-notice .notice-icon {
+            width: 36px;
+            height: 36px;
+            background: #fff3e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .setup-notice .notice-icon svg {
+            width: 20px;
+            height: 20px;
+            stroke: var(--orange);
+        }
+        .setup-notice .notice-content h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        .setup-notice .notice-content p {
+            font-size: 12px;
+            color: var(--light-text);
+            line-height: 1.5;
+        }
+        .setup-notice .notice-content code {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            .setup-notice {
+                flex-direction: column;
+                text-align: center;
+            }
+            .setup-notice .notice-icon {
+                margin: 0 auto;
+            }
+        }
+
+        /* Brand Logo Ticker */
+        .brand-ticker {
+            margin-top: 48px;
+            padding: 32px 0;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            overflow: hidden;
+            position: relative;
+        }
+        .brand-ticker::before,
+        .brand-ticker::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .brand-ticker::before {
+            left: 0;
+            background: linear-gradient(to right, var(--warm-gray), transparent);
+        }
+        .brand-ticker::after {
+            right: 0;
+            background: linear-gradient(to left, var(--warm-gray), transparent);
+        }
+        .brand-ticker-label {
+            text-align: center;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--light-text);
+            margin-bottom: 20px;
+        }
+        .brand-ticker-track {
+            display: flex;
+            animation: ticker 120s linear infinite;
+            width: max-content;
+        }
+        .brand-ticker-track:hover {
+            animation-play-state: paused;
+        }
+        .brand-ticker-item {
+            flex-shrink: 0;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .brand-ticker-item:hover {
+            opacity: 1;
+        }
+        .brand-ticker-item svg {
+            height: 28px;
+            width: auto;
+            max-width: 120px;
+        }
+        /* Override white fills in ticker logos for visibility on light background */
+        .brand-ticker-item svg [fill="white"],
+        .brand-ticker-item svg [fill="#FFFFFF"],
+        .brand-ticker-item svg [fill="#ffffff"],
+        .brand-ticker-item svg [fill="#FFF"],
+        .brand-ticker-item svg [fill="#fff"] {
+            fill: #1c1c1c !important;
+        }
+        .brand-ticker-item svg [fill="none"] {
+            fill: none !important;
+        }
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .hotel-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hotel-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .hotel-card-image {
+            height: 140px;
+            background: linear-gradient(135deg, #d4cfc7 0%, #b8a88a 100%);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hotel-card-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0) 100%);
+            pointer-events: none;
+        }
+        .hotel-placeholder-icon {
+            width: 48px;
+            height: 48px;
+            stroke: rgba(255,255,255,0.5);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .savings-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--green);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .brand-logo {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1;
+        }
+        .brand-logo svg {
+            height: 24px;
+            width: auto;
+            display: block;
+            max-width: 110px;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+        }
+        .brand-logo svg,
+        .brand-logo svg * {
+            fill: white !important;
+        }
+        .brand-logo-small svg {
+            height: 18px;
+            max-width: 80px;
+        }
+        .hotel-card-content { padding: 16px; }
+
+        .hotel-card-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+
+        .hotel-card-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--light-text);
+            margin-bottom: 12px;
+        }
+        .star-icon {
+            width: 14px;
+            height: 14px;
+            fill: var(--gold);
+            stroke: var(--gold);
+            vertical-align: -2px;
+            margin-right: 2px;
+        }
+
+        .hotel-card-description {
+            font-size: 13px;
+            color: var(--light-text);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .price-list {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+        }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+        .price-code {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 11px;
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .price-code.baseline { background: #fff3e0; color: var(--orange); }
+        .price-code.best { background: #e8f5e9; color: var(--green); }
+        .price-value { font-weight: 600; font-size: 14px; }
+        .price-value.best { color: var(--green); }
+        .price-value.na { color: #999; font-weight: 400; font-size: 13px; }
+        .price-savings { font-size: 11px; color: var(--green); margin-left: 6px; }
+
+        /* Best Price Display */
+        .best-price-display {
+            margin: 12px 0 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .best-price-amount {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--green);
+        }
+        .best-price-label {
+            font-size: 12px;
+            color: var(--light-text);
+            margin-left: 8px;
+        }
+        .best-price-na {
+            font-size: 14px;
+            color: #999;
+        }
+
+        /* Rate Chips */
+        .price-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .rate-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 11px;
+            text-decoration: none;
+            color: var(--text);
+            transition: background 0.15s;
+        }
+        .rate-chip:hover {
+            background: #e8e8e8;
+        }
+        .rate-chip.best {
+            background: #e8f5e9;
+            color: var(--green);
+        }
+        .rate-chip.best:hover {
+            background: #c8e6c9;
+        }
+        .rate-chip.baseline {
+            background: #fff3e0;
+            color: var(--orange);
+        }
+        .rate-chip.baseline:hover {
+            background: #ffe0b2;
+        }
+        .rate-chip-code {
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .rate-chip-price {
+            font-weight: 500;
+        }
+        .chip-savings {
+            color: var(--green);
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .rate-expand-btn {
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--light-text);
+            cursor: pointer;
+        }
+        .rate-expand-btn:hover {
+            background: #f5f5f5;
+            border-style: solid;
+        }
+
+        /* Expanded price list */
+        .price-list-expanded {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .price-row-full {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+        .price-value-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .price-value-link:hover {
+            background: #f0f0f0;
+        }
+        .price-value-link.best {
+            color: var(--green);
+        }
+        .price-value-link.na {
+            color: var(--light-text);
+            font-weight: 400;
+        }
+        .price-value-link.na:hover {
+            color: var(--text);
+        }
+        .external-icon {
+            width: 12px;
+            height: 12px;
+            opacity: 0.5;
+        }
+        .price-value-link:hover .external-icon {
+            opacity: 1;
+        }
+
+        /* List View */
+        .list-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+        .list-item-header {
+            padding: 16px 20px;
+            display: flex;
+            gap: 20px;
+            cursor: pointer;
+        }
+        .list-item-header:hover { background: #fafafa; }
+        .list-item-image {
+            width: 120px;
+            height: 90px;
+            border-radius: 8px;
+            background: var(--bg);
+            background-size: cover;
+            background-position: center;
+            flex-shrink: 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .list-item-image .hotel-placeholder-icon {
+            width: 32px;
+            height: 32px;
+            stroke: #ccc;
+            fill: none;
+            stroke-width: 1.5;
+        }
+        .list-item-image .brand-logo {
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+        }
+        .list-item-image .savings-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+        .list-item-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .list-item-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .list-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .list-item-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+        .list-item-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--light-text);
+        }
+        .list-item-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .list-item-meta .star-icon {
+            width: 14px;
+            height: 14px;
+            fill: #ffc107;
+        }
+        .list-item-price-col {
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .list-item-best {
+            color: var(--green);
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .list-item-best-code {
+            font-size: 12px;
+            color: var(--light-text);
+            margin-top: 2px;
+        }
+        .list-item-rates {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .list-item-expand-btn {
+            background: none;
+            border: none;
+            color: var(--light-text);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .list-item-expand-btn:hover {
+            background: #f0f0f0;
+            color: var(--text);
+        }
+        .list-item-details {
+            display: none;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: #fafafa;
+        }
+        .list-item-details.open { display: block; }
+
+        /* Tablet Styles */
+        @media (max-width: 1024px) {
+            .search-section {
+                padding: 16px 20px;
+            }
+            .search-bar {
+                gap: 12px;
+            }
+            .search-logo .logo-text {
+                display: none;
+            }
+            .results-section {
+                padding: 20px 24px;
+            }
+            .cards-grid {
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 16px;
+            }
+        }
+
+        /* Mobile Landscape & Small Tablet */
+        @media (max-width: 768px) {
+            .search-section {
+                padding: 12px 16px;
+            }
+            .search-bar {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .search-logo {
+                order: 1;
+            }
+            .search-logo .logo-icon {
+                width: 32px;
+                height: 32px;
+            }
+            .search-divider {
+                display: none;
+            }
+            .search-fields {
+                order: 3;
+                width: 100%;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .search-field {
+                width: 100%;
+            }
+            .search-field.destination {
+                flex: 1;
+            }
+            .search-field input {
+                height: 44px;
+                padding: 12px 14px;
+            }
+            .date-range-display {
+                min-width: 100%;
+                height: 44px;
+                padding: 12px 14px;
+            }
+            .date-range-dropdown {
+                left: 0;
+                right: 0;
+                width: calc(100vw - 32px);
+                max-width: 360px;
+            }
+            .btn-search {
+                width: 100%;
+                height: 44px;
+                padding: 12px 32px;
+            }
+
+            .results-section {
+                padding: 16px;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .toolbar-left {
+                justify-content: space-between;
+            }
+            .toolbar-right {
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+            .view-toggle button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            .toolbar select {
+                flex: 1;
+                min-width: 140px;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            .hotel-card-image {
+                height: 140px;
+            }
+            .hotel-card-content {
+                padding: 14px;
+            }
+            .hotel-card-name {
+                font-size: 15px;
+            }
+
+            .loading-container {
+                padding: 40px 16px;
+            }
+            .loading-container h3 {
+                font-size: 18px;
+            }
+            .step {
+                padding: 12px 14px;
+            }
+            .step-icon {
+                width: 36px;
+                height: 36px;
+            }
+            .step-icon svg {
+                width: 18px;
+                height: 18px;
+            }
+            .step-title {
+                font-size: 13px;
+            }
+            .step-desc {
+                font-size: 11px;
+            }
+
+            .empty-state {
+                padding: 60px 16px;
+            }
+        }
+
+        /* Mobile Portrait */
+        @media (max-width: 480px) {
+            .search-logo .logo-icon {
+                width: 28px;
+                height: 28px;
+            }
+            .search-controls .version-badge {
+                display: none;
+            }
+            .search-controls .settings-btn {
+                width: 32px;
+                height: 32px;
+            }
+
+            .settings-panel {
+                width: 100%;
+                max-width: none;
+                right: -100%;
+            }
+            .settings-header {
+                padding: 16px;
+            }
+            .settings-content {
+                padding: 16px;
+            }
+
+            .search-section {
+                padding: 10px 12px;
+            }
+            .search-field label {
+                font-size: 10px;
+            }
+            .search-field input {
+                padding: 12px;
+                font-size: 16px; /* Prevents iOS zoom */
+            }
+            .date-range-display {
+                padding: 12px;
+            }
+            .date-range-text {
+                font-size: 13px;
+            }
+            .date-range-text .nights {
+                display: block;
+                margin-left: 0;
+                margin-top: 2px;
+            }
+            .date-range-dropdown {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: none;
+                border-radius: 16px 16px 0 0;
+                padding: 20px 16px 32px;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+            .calendar-day {
+                padding: 12px 6px;
+            }
+            .btn-search {
+                font-size: 16px;
+            }
+
+            .autocomplete-dropdown {
+                max-height: 260px;
+            }
+            .autocomplete-item {
+                padding: 10px 12px;
+            }
+            .autocomplete-icon {
+                width: 28px;
+                height: 28px;
+            }
+            .autocomplete-icon svg {
+                width: 16px;
+                height: 16px;
+            }
+            .autocomplete-main {
+                font-size: 13px;
+            }
+            .autocomplete-sub {
+                font-size: 11px;
+            }
+
+            .results-section {
+                padding: 12px;
+            }
+            .toolbar-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .toolbar-right {
+                gap: 8px;
+            }
+            .view-toggle {
+                flex: 1;
+            }
+            .view-toggle button {
+                flex: 1;
+                padding: 10px 8px;
+                font-size: 11px;
+            }
+            .toolbar select {
+                width: 100%;
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .hotel-card-image {
+                height: 120px;
+            }
+            .savings-badge {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            .hotel-card-content {
+                padding: 12px;
+            }
+            .hotel-card-name {
+                font-size: 14px;
+            }
+            .hotel-card-meta {
+                font-size: 11px;
+                gap: 8px;
+            }
+            .hotel-card-description {
+                font-size: 12px;
+            }
+            .price-row {
+                padding: 4px 0;
+            }
+            .price-code {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            .price-value {
+                font-size: 13px;
+            }
+            .price-savings {
+                font-size: 10px;
+            }
+
+            .list-item-header {
+                padding: 12px;
+                gap: 12px;
+            }
+            .list-item-image {
+                width: 80px;
+                height: 60px;
+            }
+            .list-item-content {
+                gap: 6px;
+            }
+            .list-item-top {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .list-item-name {
+                font-size: 14px;
+            }
+            .list-item-meta {
+                font-size: 11px;
+                gap: 10px;
+            }
+            .list-item-price-col {
+                text-align: left;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .list-item-best {
+                font-size: 16px;
+            }
+            .list-item-best-code {
+                font-size: 11px;
+            }
+            .list-item-rates {
+                gap: 6px;
+            }
+            .list-item-details {
+                padding: 12px;
+            }
+
+            .loading-container {
+                padding: 32px 12px;
+            }
+            .loading-container h3 {
+                font-size: 16px;
+                margin-bottom: 20px;
+            }
+            .step {
+                padding: 10px 12px;
+                gap: 12px;
+            }
+            .step-icon {
+                width: 32px;
+                height: 32px;
+            }
+            .step-icon svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .empty-state {
+                padding: 48px 12px;
+            }
+            .empty-state h3 {
+                font-size: 16px;
+            }
+            .empty-state p {
+                font-size: 13px;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 360px) {
+            .logo-text {
+                font-size: 14px;
+            }
+            .header-left {
+                gap: 6px;
+            }
+            .search-field label {
+                font-size: 9px;
+            }
+            .calendar-grid {
+                gap: 2px;
+            }
+            .calendar-day {
+                padding: 10px 4px;
+                font-size: 12px;
+            }
+            .calendar-day-header {
+                font-size: 10px;
+            }
+        }
+
+        /* Handle notch on iOS devices */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            .date-range-dropdown {
+                padding-bottom: calc(32px + env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Code Selector Modal -->
+    <div class="code-modal-overlay" id="codeModalOverlay" onclick="toggleSettings()"></div>
+    <div class="code-modal" id="codeModal">
+        <div class="code-modal-header">
+            <h2>Select Corporate Codes</h2>
+            <div class="code-modal-header-right">
+                <select id="currencySelect" class="currency-select" onchange="setCurrency(this.value)">
+                    <option value="AUD">AUD</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="CAD">CAD</option>
+                    <option value="NZD">NZD</option>
+                    <option value="SGD">SGD</option>
+                    <option value="JPY">JPY</option>
+                </select>
+                <button class="code-modal-close" onclick="toggleSettings()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="code-modal-body">
+            <!-- Sidebar with presets -->
+            <div class="code-modal-sidebar">
+                <div class="preset-section">
+                    <h4>Quick Select</h4>
+                    <div class="preset-buttons" id="presetButtons">
+                        <button class="preset-btn" onclick="applyPreset('quick10')">
+                            <span class="preset-icon">⚡</span>
+                            <span class="preset-name">Quick 10</span>
+                            <span class="preset-count">10</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyPreset('tech')">
+                            <span class="preset-icon">💻</span>
+                            <span class="preset-name">Top Tech</span>
+                            <span class="preset-count">11</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyPreset('finance')">
+                            <span class="preset-icon">💰</span>
+                            <span class="preset-name">Finance</span>
+                            <span class="preset-count">8</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyPreset('consulting')">
+                            <span class="preset-icon">👥</span>
+                            <span class="preset-name">Big 4</span>
+                            <span class="preset-count">6</span>
+                        </button>
+                        <button class="preset-btn" onclick="applyPreset('recommended')">
+                            <span class="preset-icon">⭐</span>
+                            <span class="preset-name">Recommended</span>
+                            <span class="preset-count" id="recommendedCount">15</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="selection-summary">
+                    <div class="selection-count-display">
+                        <span class="selection-number" id="selectionNumber">0</span>
+                        <span class="selection-max" id="selectionMax">/ 50</span>
+                    </div>
+                    <div class="selection-bar-container">
+                        <div class="selection-bar" id="selectionBar"></div>
+                    </div>
+                    <div class="selection-estimate" id="selectionEstimate">
+                        Select codes to search
+                    </div>
+                </div>
+
+                <div class="sidebar-actions">
+                    <button class="btn-clear-all" onclick="clearAllCodes()">Clear All</button>
+                    <button class="btn-save-preset" onclick="saveCurrentAsPreset()">Save Selection</button>
+                </div>
+            </div>
+
+            <!-- Main content area -->
+            <div class="code-modal-content">
+                <div class="code-search-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="codeSearch" placeholder="Search codes or companies..." oninput="filterCodesList()">
+                </div>
+
+                <div class="codes-grid" id="codesList">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Add New Code (collapsed) -->
+                <div class="add-code-section">
+                    <button class="add-code-toggle" onclick="toggleAddCode()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Custom Code
+                    </button>
+                    <div class="add-code-form" id="addCodeForm" style="display: none;">
+                        <input type="text" id="newCodeInput" placeholder="Code" maxlength="10">
+                        <input type="text" id="newCompanyInput" placeholder="Company name">
+                        <button class="btn-add-code" onclick="addNewCode()">Add</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="search-section">
+        <div class="search-bar">
+            <a href="/" class="search-logo" style="text-decoration: none;">
+                <img class="logo-icon" src="logo.jpg" alt="Ritz-Weaselton">
+                <span class="logo-text">Ritz-Weaselton</span>
+            </a>
+            <div class="search-divider"></div>
+            <div class="search-fields">
+                <div class="search-field destination">
+                    <label>Destination</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="destination" placeholder="City, landmark, or airport..." autocomplete="off" oninput="onDestinationInput()" onkeydown="onDestinationKeydown(event)" onfocus="onDestinationFocus()">
+                        <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                    </div>
+                </div>
+                <div class="search-field">
+                    <label>Dates</label>
+                    <div class="date-range-picker" id="dateRangePicker">
+                        <div class="date-range-display" onclick="toggleDatePicker(event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span class="date-range-text" id="dateRangeText">Select dates</span>
+                        </div>
+                        <div class="date-range-dropdown" id="dateDropdown">
+                            <div class="calendar-header">
+                                <button onclick="changeMonth(-1)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                        <polyline points="15 18 9 12 15 6"/>
+                                    </svg>
+                                </button>
+                                <span class="calendar-month" id="calendarMonth"></span>
+                                <button onclick="changeMonth(1)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                        <polyline points="9 18 15 12 9 6"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid">
+                                <div class="calendar-day-header">Su</div>
+                                <div class="calendar-day-header">Mo</div>
+                                <div class="calendar-day-header">Tu</div>
+                                <div class="calendar-day-header">We</div>
+                                <div class="calendar-day-header">Th</div>
+                                <div class="calendar-day-header">Fr</div>
+                                <div class="calendar-day-header">Sa</div>
+                            </div>
+                            <div class="date-range-footer">
+                                <span class="nights-display" id="nightsDisplay">Select check-in date</span>
+                                <button class="date-apply-btn" onclick="applyDateRange()">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="checkIn">
+                    <input type="hidden" id="checkOut">
+                </div>
+                <button class="btn-search" id="searchBtn" onclick="runSearch()">Search</button>
+            </div>
+            <div class="search-controls">
+                <span class="version-badge">v2.12</span>
+                <a href="/settings.html" class="codes-count-badge" title="Configure corporate codes">
+                    <span class="count" id="codesCountBadge">0</span>
+                    <span>codes</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="results-section">
+        <div class="toolbar" id="toolbar" style="display: none;">
+            <div class="toolbar-left">
+                <span class="result-count" id="resultCount">0 properties</span>
+                <span class="status-pill ready" id="statusPill">Ready</span>
+            </div>
+            <div class="toolbar-right">
+                <div class="view-toggle">
+                    <button class="active" onclick="setView('card')">Cards</button>
+                    <button onclick="setView('list')">List</button>
+                </div>
+                <div class="view-toggle">
+                    <button class="active" onclick="setGrouping('property')">By Property</button>
+                    <button onclick="setGrouping('code')">By Code</button>
+                </div>
+                <select id="sortBy" onchange="renderResults()">
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="savings-desc">Best Savings</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name-asc">Name: A-Z</option>
+                    <option value="rating-desc">Rating</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="resultsBody">
+            <div class="empty-state" id="landingState">
+                <h3>Find the Best Marriott Rates</h3>
+                <p class="tagline">Compare corporate codes across 200+ companies to find hidden discounts on Marriott properties worldwide.</p>
+
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                        <h4>Compare 200+ Codes</h4>
+                        <p>Test corporate codes from major companies, universities, and organizations to find the best rates.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                        </div>
+                        <h4>Real-Time Results</h4>
+                        <p>Scrapes live Marriott pricing for your exact dates and destination—no cached or stale data.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <h4>See Your Savings</h4>
+                        <p>Instantly see how much you save vs. standard rates with clear savings indicators on each result.</p>
+                    </div>
+                </div>
+
+                <div class="brand-ticker">
+                    <div class="brand-ticker-label">Compare rates across all Marriott brands</div>
+                    <div class="brand-ticker-track" id="brandTicker"></div>
+                </div>
+
+                <div class="setup-notice" id="setupNotice">
+                    <button class="setup-notice-dismiss" onclick="dismissSetupNotice()" aria-label="Dismiss">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                    <div class="notice-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                    </div>
+                    <div class="notice-content">
+                        <h4>First Time Setup</h4>
+                        <p>Enable Chrome JavaScript automation: Go to <code>Chrome → View → Developer → Allow JavaScript from Apple Events</code>. This allows the tool to scrape Marriott's search results.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="brand-logos.js"></script>
+    <script>
+        // Setup notice dismiss functionality
+        function dismissSetupNotice() {
+            document.getElementById('setupNotice').classList.add('hidden');
+            localStorage.setItem('ritz-setup-dismissed', 'true');
+        }
+        // Check if setup notice was previously dismissed
+        if (localStorage.getItem('ritz-setup-dismissed') === 'true') {
+            document.getElementById('setupNotice')?.classList.add('hidden');
+        }
+
+        // Corporate codes display names
+        const CODE_DISPLAY = {
+            'BASELINE': 'STD',  // Display as "STD" in badges
+        };
+
+        // All available corporate codes from master list
+        const ALL_CODES = [
+            // Recommended codes (commonly work well) - prioritized at top
+            { code: 'AAA', company: 'AAA/CAA Members', recommended: true },
+            { code: 'GOV', company: 'Government / Military', recommended: true },
+            { code: 'S9R', company: 'Senior Discount (62+)', recommended: true },
+            { code: 'XYD', company: 'Military / First Responder', recommended: true },
+            { code: 'IBM', company: 'IBM Corporation', recommended: true },
+            { code: 'GGL', company: 'Google', recommended: true },
+            { code: 'AMZ', company: 'Amazon', recommended: true },
+            { code: 'APL', company: 'Apple Inc.', recommended: true },
+            { code: 'MCO', company: 'Microsoft', recommended: true },
+            { code: '253151', company: 'Microsoft', recommended: true },
+            { code: 'ACC', company: 'Accenture', recommended: true },
+            { code: 'DTC', company: 'Deloitte', recommended: true },
+            { code: 'PCW', company: 'PwC', recommended: true },
+            { code: 'KPM', company: 'KPMG', recommended: true },
+            { code: 'ERN', company: 'Ernst & Young', recommended: true },
+            // All other codes
+            { code: '10053', company: 'Intuitive Surgical / Johnson & Johnson' },
+            { code: '11353', company: 'Deutsche Bank' },
+            { code: '12114', company: 'Daimler-Benz / Louis Vuitton' },
+            { code: '12159', company: 'Lehman Brothers' },
+            { code: '12624', company: 'Credit Suisse' },
+            { code: '12698', company: 'Sony' },
+            { code: '13307', company: 'General Electric International' },
+            { code: '13365', company: 'Cisco / Costco' },
+            { code: '13516', company: 'Credit Lyonnais' },
+            { code: '13717', company: 'IBM / Lufthansa' },
+            { code: '17885', company: 'Harvard University' },
+            { code: '18000', company: 'IBM' },
+            { code: '253511', company: 'Ernst & Young' },
+            { code: '253568', company: 'APAC' },
+            { code: '254797', company: 'Goldman Sachs' },
+            { code: '256547', company: 'LVMH' },
+            { code: '256810', company: 'Bellsouth' },
+            { code: '259552', company: 'ATK (Alliant Techsystems)' },
+            { code: '260247', company: 'Cisco' },
+            { code: '281403', company: 'CPI' },
+            { code: '283335', company: 'CVS Health' },
+            { code: '290717', company: 'IIDA' },
+            { code: '295936', company: 'Federal Rooms (Government)' },
+            { code: '296011', company: 'DTV / DirecTV' },
+            { code: '2743', company: 'Morgan Stanley' },
+            { code: '2754', company: 'Deloitte / DTV' },
+            { code: '30744', company: 'UTC' },
+            { code: '340519', company: 'SWS' },
+            { code: '340965', company: 'BlackRock' },
+            { code: '349097', company: 'Stanford University' },
+            { code: '35902', company: 'University of Texas' },
+            { code: '363006', company: 'MIT' },
+            { code: '364183', company: 'UCLA' },
+            { code: '4309', company: 'University of Pennsylvania' },
+            { code: '4313', company: 'IBM' },
+            { code: '4764', company: 'Gillette' },
+            { code: '4899', company: 'Pfizer' },
+            { code: '5105', company: 'HP' },
+            { code: '5171', company: 'Boeing' },
+            { code: '5232', company: 'Deloitte / PwC' },
+            { code: '5298', company: 'Bristol-Myers Squibb' },
+            { code: '5444', company: 'HP' },
+            { code: '57845', company: 'RBC Royal Bank' },
+            { code: '59009', company: 'Morgan Stanley' },
+            { code: '60848', company: 'Syracuse University' },
+            { code: '66272', company: 'Federated Dept Stores' },
+            { code: '7346', company: 'Siemens' },
+            { code: '77377', company: 'Oracle' },
+            { code: '7770781', company: 'Deloitte' },
+            { code: '9360', company: 'General Electric' },
+            { code: '9753', company: 'Raytheon' },
+            { code: 'A70', company: 'Alaska Airlines' },
+            { code: 'A9M', company: 'All State Motor Club' },
+            { code: 'AA8', company: 'American Airlines' },
+            { code: 'ABT', company: 'Abbott Laboratories' },
+            { code: 'ACS', company: 'Affiliated Computer Services' },
+            { code: 'ADP', company: 'ADP Payroll Services' },
+            { code: 'ADO', company: 'Adobe' },
+            { code: 'AET', company: 'Aetna' },
+            { code: 'AFI', company: 'American Family Insurance' },
+            { code: 'AIG', company: 'American International Group' },
+            { code: 'ALL', company: 'Allstate' },
+            { code: 'AMW', company: 'Amway' },
+            { code: 'AMX', company: 'American Express' },
+            { code: 'AOL', company: 'AOL (America Online)' },
+            { code: 'APC', company: 'Apple Computers' },
+            { code: 'APP', company: 'Applied Materials' },
+            { code: 'ASG', company: 'Assurant Solutions' },
+            { code: 'ASU', company: 'Arizona State University' },
+            { code: 'ATK', company: 'A.T. Kearney' },
+            { code: 'ATT', company: 'AT&T' },
+            { code: 'BAH', company: 'Booz Allen Hamilton' },
+            { code: 'BAR', company: 'Best Available Rate' },
+            { code: 'BAY', company: 'Bayer' },
+            { code: 'BCL', company: 'Barclays' },
+            { code: 'BEC', company: 'Bechtel' },
+            { code: 'BMW', company: 'BMW' },
+            { code: 'BMS', company: 'Bristol-Myers Squibb' },
+            { code: 'BOA', company: 'Bank of America' },
+            { code: 'BOB', company: 'Bank One' },
+            { code: 'BOE', company: 'Boeing' },
+            { code: 'BPA', company: 'BP (British Petroleum)' },
+            { code: 'CAP', company: 'Capital One' },
+            { code: 'CAT', company: 'Caterpillar' },
+            { code: 'CDH', company: 'Cardinal Health' },
+            { code: 'CFA', company: 'Chick-fil-A' },
+            { code: 'CIS', company: 'Cisco Systems' },
+            { code: 'CIT', company: 'Citigroup / Citibank' },
+            { code: 'CLX', company: 'Clorox' },
+            { code: 'CNL', company: 'CNL' },
+            { code: 'CO4', company: 'Comcast' },
+            { code: 'COK', company: 'Coca-Cola' },
+            { code: 'COS', company: 'Costco' },
+            { code: 'COX', company: 'Cox Communications' },
+            { code: 'CSC', company: 'Cisco Systems' },
+            { code: 'CVG', company: 'Convergys' },
+            { code: 'CVS', company: 'CVS Health' },
+            { code: 'CVX', company: 'Chevron' },
+            { code: 'D86', company: 'De Beers' },
+            { code: 'DBK', company: 'Deutsche Bank' },
+            { code: 'DCX', company: 'Daimler Chrysler' },
+            { code: 'DEL', company: 'Dell Technologies' },
+            { code: 'DEV', company: 'DeVry' },
+            { code: 'DIS', company: 'Disney' },
+            { code: 'DLA', company: 'Delta Air Lines' },
+            { code: 'DOW', company: 'Dow Chemical' },
+            { code: 'DUK', company: 'Duke University' },
+            { code: 'DUP', company: 'DuPont' },
+            { code: 'EDD', company: 'Eddie Bauer' },
+            { code: 'EDS', company: 'Electronic Data Systems (HPE)' },
+            { code: 'EMC', company: 'EMC Corporation' },
+            { code: 'EYC', company: 'Ernst & Young' },
+            { code: 'FDS', company: 'Macy\'s / Federated' },
+            { code: 'FED', company: 'FedEx' },
+            { code: 'FLT', company: 'Fleet Bank' },
+            { code: 'FPL', company: 'Florida Power & Light' },
+            { code: 'FRD', company: 'Ford Motor Company' },
+            { code: 'FSF', company: 'Facebook / Meta' },
+            { code: 'FSU', company: 'Florida State University' },
+            { code: 'FUJ', company: 'Fujifilm' },
+            { code: 'FUS', company: 'First USA' },
+            { code: 'G2D', company: 'General Dynamics' },
+            { code: 'GAP', company: 'Gap, Inc.' },
+            { code: 'GEE', company: 'General Electric' },
+            { code: 'GMC', company: 'General Motors' },
+            { code: 'GS1', company: 'Goldman Sachs' },
+            { code: 'HD1', company: 'Home Depot' },
+            { code: 'HON', company: 'Honeywell' },
+            { code: 'HPQ', company: 'HP (Hewlett Packard)' },
+            { code: 'HRV', company: 'Harvard University' },
+            { code: 'HSB', company: 'HSBC' },
+            { code: 'HVD', company: 'Harvard University' },
+            { code: 'IBS', company: 'Intel' },
+            { code: 'INL', company: 'Intel Corporation' },
+            { code: 'JCH', company: 'JPMorgan Chase' },
+            { code: 'JCP', company: 'JC Penney' },
+            { code: 'JOH', company: 'Johnson & Johnson' },
+            { code: 'JPM', company: 'JPMorgan Chase' },
+            { code: 'KRO', company: 'Kroger' },
+            { code: 'LEH', company: 'Lehman Brothers' },
+            { code: 'LF5', company: 'Li and Fung' },
+            { code: 'LGM', company: 'Legg Mason' },
+            { code: 'LHS', company: 'Lufthansa' },
+            { code: 'LMT', company: 'Lockheed Martin' },
+            { code: 'LOW', company: 'Lowe\'s' },
+            { code: 'MAA', company: 'Manhattan Associates' },
+            { code: 'MIT', company: 'MIT' },
+            { code: 'MLB', company: 'SAB Miller' },
+            { code: 'MLM', company: 'Bayer' },
+            { code: 'MMM', company: '3M' },
+            { code: 'MOS', company: 'Morgan Stanley' },
+            { code: 'MRK', company: 'Merck & Co.' },
+            { code: 'MSU', company: 'Michigan State University' },
+            { code: 'NCY', company: 'National City Bank' },
+            { code: 'NIS', company: 'Nissan / Renault' },
+            { code: 'NKE', company: 'Nike' },
+            { code: 'NOR', company: 'Northrop Grumman' },
+            { code: 'NOV', company: 'Novartis' },
+            { code: 'NVL', company: 'Novellus Systems' },
+            { code: 'NWU', company: 'Northwestern University' },
+            { code: 'ORA', company: 'Oracle Corporation' },
+            { code: 'OSU', company: 'Ohio State University' },
+            { code: 'PAG', company: 'Procter & Gamble' },
+            { code: 'PEP', company: 'PepsiCo' },
+            { code: 'PFE', company: 'Pfizer' },
+            { code: 'PFZ', company: 'Pfizer' },
+            { code: 'PHI', company: 'Philips' },
+            { code: 'PID', company: 'Piedmont Natural Gas' },
+            { code: 'PRU', company: 'Prudential' },
+            { code: 'PSU', company: 'Penn State University' },
+            { code: 'QUA', company: 'Qualcomm' },
+            { code: 'RAY', company: 'Raytheon Technologies' },
+            { code: 'SAM', company: 'Samsung' },
+            { code: 'SAP', company: 'SAP' },
+            { code: 'SAR', company: 'Sara Lee' },
+            { code: 'SHE', company: 'Shell' },
+            { code: 'SHL', company: 'Shell' },
+            { code: 'SIE', company: 'Siemens' },
+            { code: 'SLS', company: 'Salesforce' },
+            { code: 'SON', company: 'Sony' },
+            { code: 'SPR', company: 'Sprint' },
+            { code: 'STF', company: 'Scientific Atlanta' },
+            { code: 'STN', company: 'Stanford University' },
+            { code: 'SUN', company: 'Oracle (Sun)' },
+            { code: 'SW8', company: 'Southwest Airlines' },
+            { code: 'T72', company: 'Tulane University' },
+            { code: 'TBS', company: 'Turner Broadcasting System' },
+            { code: 'TGT', company: 'Target Corporation' },
+            { code: 'TOS', company: 'Toshiba' },
+            { code: 'TOY', company: 'Toyota' },
+            { code: 'TR5', company: 'T. Rowe Price' },
+            { code: 'TRW', company: 'TRW Inc.' },
+            { code: 'TSL', company: 'Tesla' },
+            { code: 'TSN', company: 'ThyssenKrupp AG' },
+            { code: 'TXI', company: 'Texas Instruments' },
+            { code: 'UAL', company: 'United Airlines' },
+            { code: 'UBS', company: 'UBS' },
+            { code: 'UC0', company: 'University of California' },
+            { code: 'UCB', company: 'UC Berkeley' },
+            { code: 'UCLA', company: 'UCLA' },
+            { code: 'UFL', company: 'University of Florida' },
+            { code: 'UGA', company: 'University of Georgia' },
+            { code: 'UM1', company: 'University of Miami' },
+            { code: 'UM2', company: 'University of Michigan' },
+            { code: 'UNC', company: 'University of North Carolina' },
+            { code: 'UNI', company: 'Uniglobe Travel' },
+            { code: 'UPS', company: 'UPS' },
+            { code: 'USC', company: 'University of Southern California' },
+            { code: 'UTX', company: 'University of Texas' },
+            { code: 'UVA', company: 'University of Virginia' },
+            { code: 'UWI', company: 'University of Wisconsin' },
+            { code: 'VER', company: 'Verizon' },
+            { code: 'VSA', company: 'Visa Inc.' },
+            { code: 'WAC', company: 'Wachovia Bank' },
+            { code: 'WEL', company: 'Wells Fargo' },
+            { code: 'WMT', company: 'Walmart' },
+            { code: 'WMU', company: 'Washington Mutual' },
+            { code: 'XOM', company: 'ExxonMobil' },
+            { code: 'YAL', company: 'Yale University' }
+        ];
+
+        // Build CODE_NAMES from ALL_CODES for backward compatibility
+        const CODE_NAMES = { 'BASELINE': 'Standard Rate (No Code)' };
+        ALL_CODES.forEach(c => { CODE_NAMES[c.code] = c.company; });
+
+        // Favorite codes (stored locally, synced to server)
+        let favoriteCodes = JSON.parse(localStorage.getItem('marriottFavoriteCodes') || '[]');
+
+        // Load enabled codes from localStorage (default: recommended codes)
+        let enabledCodes = JSON.parse(localStorage.getItem('marriottEnabledCodes') || 'null');
+        if (enabledCodes === null) {
+            enabledCodes = ALL_CODES.filter(c => c.recommended).map(c => c.code);
+        }
+
+        // Active codes = BASELINE + enabled codes (for API calls)
+        function getActiveCodes() {
+            return ['BASELINE', ...enabledCodes];
+        }
+
+        // Update the codes count badge on main page
+        function updateCodesCountBadge() {
+            const badge = document.getElementById('codesCountBadge');
+            if (badge) {
+                badge.textContent = enabledCodes.length;
+            }
+        }
+
+        // Update badge on page load
+        document.addEventListener('DOMContentLoaded', updateCodesCountBadge);
+
+        // Legacy compatibility
+        let activeCodes = getActiveCodes();
+
+        // Batch processing configuration (must be before renderCodes)
+        const BATCH_CONFIG = {
+            MAX_TABS_PER_BATCH: 10,
+            INTER_BATCH_DELAY: 3000
+        };
+
+        // Simple category icons - matching STEP_ICONS style
+        const CATEGORY_ICONS = {
+            tech: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            finance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+            consulting: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+            university: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+            government: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/></svg>',
+            airline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
+            default: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'
+        };
+
+        // Map codes to categories
+        const CODE_CATEGORIES = {
+            // Tech
+            'GGL': 'tech', 'AMZ': 'tech', 'APL': 'tech', 'APC': 'tech', 'MCO': 'tech', '253151': 'tech',
+            'IBM': 'tech', '4313': 'tech', '18000': 'tech', '13717': 'tech', 'ADO': 'tech', 'CIS': 'tech',
+            'CSC': 'tech', 'ORA': 'tech', '77377': 'tech', 'INL': 'tech', 'IBS': 'tech', 'DEL': 'tech',
+            'HPQ': 'tech', '5105': 'tech', '5444': 'tech', 'SLS': 'tech', 'FSF': 'tech', 'SAM': 'tech',
+            'SAP': 'tech', 'SON': 'tech', 'EMC': 'tech', 'EDS': 'tech', 'APP': 'tech',
+            // Finance
+            'GS1': 'finance', '254797': 'finance', 'JPM': 'finance', 'JCH': 'finance', 'MOS': 'finance',
+            '59009': 'finance', '2743': 'finance', 'BOA': 'finance', 'HSB': 'finance', 'BCL': 'finance',
+            'DBK': 'finance', '11353': 'finance', '12624': 'finance', '340965': 'finance', 'CIT': 'finance',
+            'AMX': 'finance', 'LEH': 'finance', '12159': 'finance', 'PRU': 'finance', 'CAP': 'finance',
+            // Consulting
+            'ACC': 'consulting', 'DTC': 'consulting', '7770781': 'consulting', '2754': 'consulting',
+            'PCW': 'consulting', '5232': 'consulting', 'KPM': 'consulting', 'ERN': 'consulting',
+            'EYC': 'consulting', '253511': 'consulting', 'BAH': 'consulting', 'ATK': 'consulting',
+            // Universities
+            'HRV': 'university', 'HVD': 'university', '17885': 'university', 'MIT': 'university',
+            '363006': 'university', '349097': 'university', '364183': 'university', 'DUK': 'university',
+            'NWU': 'university', 'PSU': 'university', 'OSU': 'university', 'MSU': 'university',
+            'FSU': 'university', 'ASU': 'university', '35902': 'university', '4309': 'university',
+            '60848': 'university', 'DEV': 'university',
+            // Government/Military
+            'GOV': 'government', 'XYD': 'government', '295936': 'government',
+            // Airlines
+            'A70': 'airline', 'AA8': 'airline', 'DLA': 'airline', 'LHS': 'airline'
+        };
+
+        function getCategoryIcon(code) {
+            const category = CODE_CATEGORIES[code] || 'default';
+            return CATEGORY_ICONS[category] || CATEGORY_ICONS.default;
+        }
+
+        function renderCodes() {
+            const list = document.getElementById('codesList');
+            const searchInput = document.getElementById('codeSearch');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+            // Filter codes based on search
+            const filteredCodes = ALL_CODES.filter(c =>
+                c.code.toLowerCase().includes(searchTerm) ||
+                c.company.toLowerCase().includes(searchTerm)
+            );
+
+            // Separate into categories
+            const favorites = filteredCodes.filter(c => favoriteCodes.includes(c.code));
+            const recommended = filteredCodes.filter(c => c.recommended && !favoriteCodes.includes(c.code));
+            const others = filteredCodes.filter(c => !c.recommended && !favoriteCodes.includes(c.code));
+
+            let html = '';
+
+            if (favorites.length > 0) {
+                html += `<div class="code-section-title">⭐ Favorites (${favorites.length})</div>`;
+                html += favorites.map(c => renderCodeCard(c)).join('');
+            }
+
+            if (recommended.length > 0) {
+                html += `<div class="code-section-title">Recommended (${recommended.length})</div>`;
+                html += recommended.map(c => renderCodeCard(c)).join('');
+            }
+
+            if (others.length > 0) {
+                html += `<div class="code-section-title">All Codes (${others.length})</div>`;
+                html += others.map(c => renderCodeCard(c)).join('');
+            }
+
+            if (filteredCodes.length === 0) {
+                html = '<p style="color: #999; font-size: 13px; padding: 40px 0; text-align: center; grid-column: 1 / -1;">No codes match your search</p>';
+            }
+
+            list.innerHTML = html;
+            updateCodesCount();
+            updateSelectionSummary();
+            activeCodes = getActiveCodes();
+        }
+
+        function renderCodeCard(codeObj) {
+            const isSelected = enabledCodes.includes(codeObj.code);
+            const isFavorite = favoriteCodes.includes(codeObj.code);
+            const categoryIcon = getCategoryIcon(codeObj.code);
+
+            return `
+                <div class="code-card ${isSelected ? 'selected' : ''}" onclick="toggleCode('${codeObj.code}')">
+                    <div class="code-card-checkbox">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="code-card-icon">${categoryIcon}</div>
+                    <div class="code-card-info">
+                        <div class="code-card-code">${codeObj.code}</div>
+                        <div class="code-card-company">${codeObj.company}</div>
+                    </div>
+                    <div class="code-card-badges">
+                        ${codeObj.recommended ? '<span class="code-card-badge recommended">Top</span>' : ''}
+                    </div>
+                    <span class="code-card-favorite ${isFavorite ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${codeObj.code}')" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">⭐</span>
+                </div>
+            `;
+        }
+
+        function toggleCode(code) {
+            const idx = enabledCodes.indexOf(code);
+            if (idx === -1) {
+                enabledCodes.push(code);
+            } else {
+                enabledCodes.splice(idx, 1);
+            }
+            saveCodes();
+            renderCodes();
+        }
+
+        function showToast(message) {
+            const existing = document.querySelector('.toast-message');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--dark);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 10000;
+                animation: fadeInUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function updateSelectionSummary() {
+            const count = enabledCodes.length;
+            const batches = Math.ceil(count / BATCH_CONFIG.MAX_TABS_PER_BATCH) || 1;
+
+            // Update count display
+            const numberEl = document.getElementById('selectionNumber');
+            if (numberEl) {
+                numberEl.textContent = count;
+                // Color based on batch count instead of limit
+                numberEl.style.color = count === 0 ? 'var(--light-text)' :
+                                       batches >= 5 ? 'var(--orange)' : 'var(--green)';
+            }
+
+            // Update progress bar - show batch progress instead of limit
+            const barEl = document.getElementById('selectionBar');
+            if (barEl) {
+                // Scale to show batches (each batch = 20% width, capped at 100%)
+                const percent = Math.min(batches * 20, 100);
+                barEl.style.width = `${percent}%`;
+                barEl.classList.remove('warning', 'limit');
+                if (batches >= 5) barEl.classList.add('warning');
+            }
+
+            // Update estimate
+            const estimateEl = document.getElementById('selectionEstimate');
+            if (estimateEl) {
+                if (count === 0) {
+                    estimateEl.textContent = 'Select codes to search';
+                } else {
+                    const batches = Math.ceil(count / BATCH_CONFIG.MAX_TABS_PER_BATCH);
+                    const estTime = batches * 0.5; // ~30 seconds per batch
+                    if (batches === 1) {
+                        estimateEl.textContent = 'Single batch search';
+                    } else {
+                        estimateEl.textContent = `~${estTime.toFixed(1)} min (${batches} batches)`;
+                    }
+                }
+            }
+        }
+
+        function toggleFavorite(code) {
+            const idx = favoriteCodes.indexOf(code);
+            if (idx === -1) {
+                favoriteCodes.push(code);
+            } else {
+                favoriteCodes.splice(idx, 1);
+            }
+            localStorage.setItem('marriottFavoriteCodes', JSON.stringify(favoriteCodes));
+            renderCodes();
+
+            // Sync to server (fire and forget)
+            fetch(`/api/codes/${code}/favorite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favorite: idx === -1 })
+            }).catch(() => {});
+        }
+
+        // Preset definitions
+        const PRESETS = {
+            quick10: {
+                name: 'Quick 10',
+                codes: ['AAA', 'GOV', 'IBM', 'GGL', 'AMZ', 'APL', 'MCO', 'ACC', 'DTC', 'PCW']
+            },
+            tech: {
+                name: 'Top Tech',
+                codes: ['GGL', 'AMZ', 'APL', 'MCO', '253151', 'IBM', 'ADO', 'CIS', 'ORA', 'INL', 'SLS']
+            },
+            finance: {
+                name: 'Finance',
+                codes: ['GS1', '254797', 'JPM', 'JCH', 'MOS', 'BOA', 'HSB', 'BCL']
+            },
+            consulting: {
+                name: 'Big 4 + Consulting',
+                codes: ['ACC', 'DTC', 'PCW', 'KPM', 'ERN', 'BAH']
+            },
+            recommended: {
+                name: 'All Recommended',
+                codes: ALL_CODES.filter(c => c.recommended).map(c => c.code)
+            }
+        };
+
+        function applyPreset(presetKey) {
+            console.log('applyPreset called:', presetKey);
+            const preset = PRESETS[presetKey];
+            if (!preset) {
+                console.error('Preset not found:', presetKey);
+                return;
+            }
+
+            // Clear current and apply preset
+            enabledCodes = [...preset.codes];
+            saveCodes();
+            renderCodes();
+            showToast(`Applied "${preset.name}" preset (${preset.codes.length} codes)`);
+        }
+
+        function clearAllCodes() {
+            enabledCodes = [];
+            saveCodes();
+            renderCodes();
+            showToast('All codes cleared');
+        }
+
+        function saveCurrentAsPreset() {
+            const name = prompt('Enter a name for this preset:');
+            if (!name || !name.trim()) return;
+
+            const customPresets = JSON.parse(localStorage.getItem('ritzCustomPresets') || '{}');
+            const key = 'custom_' + Date.now();
+            customPresets[key] = {
+                name: name.trim(),
+                codes: [...enabledCodes]
+            };
+            localStorage.setItem('ritzCustomPresets', JSON.stringify(customPresets));
+            showToast(`Saved preset "${name.trim()}"`);
+        }
+
+        function toggleSectionCodes(section, enable) {
+            let codesToToggle = [];
+
+            if (section === 'favorites') {
+                codesToToggle = ALL_CODES.filter(c => favoriteCodes.includes(c.code));
+            } else if (section === 'recommended') {
+                codesToToggle = ALL_CODES.filter(c => c.recommended && !favoriteCodes.includes(c.code));
+            } else if (section === 'others') {
+                codesToToggle = ALL_CODES.filter(c => !c.recommended && !favoriteCodes.includes(c.code));
+            }
+
+            if (enable) {
+                codesToToggle.forEach(c => {
+                    if (!enabledCodes.includes(c.code)) {
+                        enabledCodes.push(c.code);
+                    }
+                });
+            } else {
+                const codeSet = new Set(codesToToggle.map(c => c.code));
+                enabledCodes = enabledCodes.filter(code => !codeSet.has(code));
+            }
+            saveCodes();
+            renderCodes();
+        }
+
+        function filterCodesList() {
+            renderCodes();
+        }
+
+        function updateCodesCount() {
+            const countEl = document.getElementById('codesCount');
+            if (countEl) {
+                const favCount = favoriteCodes.filter(c => enabledCodes.includes(c)).length;
+                countEl.textContent = `${enabledCodes.length} codes selected (${favCount} favorites) + baseline`;
+            }
+        }
+
+        function saveCodes() {
+            localStorage.setItem('marriottEnabledCodes', JSON.stringify(enabledCodes));
+            activeCodes = getActiveCodes();
+        }
+
+        async function addNewCode() {
+            const codeInput = document.getElementById('newCodeInput');
+            const companyInput = document.getElementById('newCompanyInput');
+            const code = codeInput.value.trim().toUpperCase();
+            const company = companyInput.value.trim();
+
+            if (!code || !company) {
+                alert('Please enter both code and company name');
+                return;
+            }
+
+            // Check if already exists locally
+            if (ALL_CODES.find(c => c.code === code)) {
+                alert('This code already exists');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/codes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, company })
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to add code');
+                    return;
+                }
+
+                // Add locally
+                ALL_CODES.push({ code, company });
+                CODE_NAMES[code] = company;
+
+                // Enable it by default
+                enabledCodes.push(code);
+                saveCodes();
+
+                // Clear inputs
+                codeInput.value = '';
+                companyInput.value = '';
+
+                renderCodes();
+            } catch (err) {
+                // Add locally even if server fails
+                ALL_CODES.push({ code, company });
+                CODE_NAMES[code] = company;
+                enabledCodes.push(code);
+                saveCodes();
+                codeInput.value = '';
+                companyInput.value = '';
+                renderCodes();
+            }
+        }
+
+        // Destinations database
+        const DESTINATIONS = [
+            // Australia
+            { name: 'Sydney', region: 'New South Wales, Australia', type: 'city', country: 'AU' },
+            { name: 'Melbourne', region: 'Victoria, Australia', type: 'city', country: 'AU' },
+            { name: 'Brisbane', region: 'Queensland, Australia', type: 'city', country: 'AU' },
+            { name: 'Perth', region: 'Western Australia, Australia', type: 'city', country: 'AU' },
+            { name: 'Gold Coast', region: 'Queensland, Australia', type: 'city', country: 'AU' },
+            { name: 'Adelaide', region: 'South Australia, Australia', type: 'city', country: 'AU' },
+            { name: 'Cairns', region: 'Queensland, Australia', type: 'city', country: 'AU' },
+            { name: 'Sydney Opera House', region: 'Sydney, Australia', type: 'landmark', country: 'AU' },
+            { name: 'Sydney Airport (SYD)', region: 'Sydney, Australia', type: 'airport', country: 'AU' },
+            { name: 'Melbourne Airport (MEL)', region: 'Melbourne, Australia', type: 'airport', country: 'AU' },
+            // USA
+            { name: 'New York City', region: 'New York, USA', type: 'city', country: 'US' },
+            { name: 'Los Angeles', region: 'California, USA', type: 'city', country: 'US' },
+            { name: 'San Francisco', region: 'California, USA', type: 'city', country: 'US' },
+            { name: 'Chicago', region: 'Illinois, USA', type: 'city', country: 'US' },
+            { name: 'Miami', region: 'Florida, USA', type: 'city', country: 'US' },
+            { name: 'Las Vegas', region: 'Nevada, USA', type: 'city', country: 'US' },
+            { name: 'Seattle', region: 'Washington, USA', type: 'city', country: 'US' },
+            { name: 'Boston', region: 'Massachusetts, USA', type: 'city', country: 'US' },
+            { name: 'Washington D.C.', region: 'District of Columbia, USA', type: 'city', country: 'US' },
+            { name: 'San Diego', region: 'California, USA', type: 'city', country: 'US' },
+            { name: 'Austin', region: 'Texas, USA', type: 'city', country: 'US' },
+            { name: 'Denver', region: 'Colorado, USA', type: 'city', country: 'US' },
+            { name: 'Atlanta', region: 'Georgia, USA', type: 'city', country: 'US' },
+            { name: 'Orlando', region: 'Florida, USA', type: 'city', country: 'US' },
+            { name: 'Nashville', region: 'Tennessee, USA', type: 'city', country: 'US' },
+            { name: 'Times Square', region: 'New York City, USA', type: 'landmark', country: 'US' },
+            { name: 'Central Park', region: 'New York City, USA', type: 'landmark', country: 'US' },
+            { name: 'Golden Gate Bridge', region: 'San Francisco, USA', type: 'landmark', country: 'US' },
+            { name: 'Walt Disney World', region: 'Orlando, USA', type: 'landmark', country: 'US' },
+            { name: 'Hollywood', region: 'Los Angeles, USA', type: 'landmark', country: 'US' },
+            { name: 'JFK Airport (JFK)', region: 'New York City, USA', type: 'airport', country: 'US' },
+            { name: 'LAX Airport (LAX)', region: 'Los Angeles, USA', type: 'airport', country: 'US' },
+            { name: 'O\'Hare Airport (ORD)', region: 'Chicago, USA', type: 'airport', country: 'US' },
+            // Europe
+            { name: 'London', region: 'England, United Kingdom', type: 'city', country: 'GB' },
+            { name: 'Paris', region: 'Île-de-France, France', type: 'city', country: 'FR' },
+            { name: 'Rome', region: 'Lazio, Italy', type: 'city', country: 'IT' },
+            { name: 'Barcelona', region: 'Catalonia, Spain', type: 'city', country: 'ES' },
+            { name: 'Amsterdam', region: 'North Holland, Netherlands', type: 'city', country: 'NL' },
+            { name: 'Berlin', region: 'Germany', type: 'city', country: 'DE' },
+            { name: 'Munich', region: 'Bavaria, Germany', type: 'city', country: 'DE' },
+            { name: 'Frankfurt', region: 'Hesse, Germany', type: 'city', country: 'DE' },
+            { name: 'Vienna', region: 'Austria', type: 'city', country: 'AT' },
+            { name: 'Prague', region: 'Czech Republic', type: 'city', country: 'CZ' },
+            { name: 'Dublin', region: 'Ireland', type: 'city', country: 'IE' },
+            { name: 'Edinburgh', region: 'Scotland, United Kingdom', type: 'city', country: 'GB' },
+            { name: 'Eiffel Tower', region: 'Paris, France', type: 'landmark', country: 'FR' },
+            { name: 'Big Ben', region: 'London, United Kingdom', type: 'landmark', country: 'GB' },
+            { name: 'Colosseum', region: 'Rome, Italy', type: 'landmark', country: 'IT' },
+            { name: 'Heathrow Airport (LHR)', region: 'London, United Kingdom', type: 'airport', country: 'GB' },
+            // Asia
+            { name: 'Tokyo', region: 'Japan', type: 'city', country: 'JP' },
+            { name: 'Singapore', region: 'Singapore', type: 'city', country: 'SG' },
+            { name: 'Hong Kong', region: 'Hong Kong', type: 'city', country: 'HK' },
+            { name: 'Bangkok', region: 'Thailand', type: 'city', country: 'TH' },
+            { name: 'Seoul', region: 'South Korea', type: 'city', country: 'KR' },
+            { name: 'Dubai', region: 'United Arab Emirates', type: 'city', country: 'AE' },
+            { name: 'Shanghai', region: 'China', type: 'city', country: 'CN' },
+            { name: 'Beijing', region: 'China', type: 'city', country: 'CN' },
+            { name: 'Mumbai', region: 'Maharashtra, India', type: 'city', country: 'IN' },
+            { name: 'New Delhi', region: 'India', type: 'city', country: 'IN' },
+            { name: 'Bali', region: 'Indonesia', type: 'city', country: 'ID' },
+            { name: 'Phuket', region: 'Thailand', type: 'city', country: 'TH' },
+            { name: 'Kuala Lumpur', region: 'Malaysia', type: 'city', country: 'MY' },
+            { name: 'Marina Bay Sands', region: 'Singapore', type: 'landmark', country: 'SG' },
+            { name: 'Burj Khalifa', region: 'Dubai, UAE', type: 'landmark', country: 'AE' },
+            { name: 'Changi Airport (SIN)', region: 'Singapore', type: 'airport', country: 'SG' },
+            { name: 'Narita Airport (NRT)', region: 'Tokyo, Japan', type: 'airport', country: 'JP' },
+            // Canada
+            { name: 'Toronto', region: 'Ontario, Canada', type: 'city', country: 'CA' },
+            { name: 'Vancouver', region: 'British Columbia, Canada', type: 'city', country: 'CA' },
+            { name: 'Montreal', region: 'Quebec, Canada', type: 'city', country: 'CA' },
+            { name: 'Calgary', region: 'Alberta, Canada', type: 'city', country: 'CA' },
+            // Other
+            { name: 'Auckland', region: 'New Zealand', type: 'city', country: 'NZ' },
+            { name: 'Cape Town', region: 'South Africa', type: 'city', country: 'ZA' },
+            { name: 'Rio de Janeiro', region: 'Brazil', type: 'city', country: 'BR' },
+            { name: 'Mexico City', region: 'Mexico', type: 'city', country: 'MX' },
+            { name: 'Cancun', region: 'Quintana Roo, Mexico', type: 'city', country: 'MX' },
+        ];
+
+        let autocompleteSelectedIndex = -1;
+
+        // Format date to YYYY-MM-DD in local timezone (avoids UTC conversion issues)
+        function formatDateLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Init dates (30 days out, 3 night stay)
+        const today = new Date();
+        let selectedCheckIn = new Date(today);
+        selectedCheckIn.setDate(today.getDate() + 30);
+        let selectedCheckOut = new Date(selectedCheckIn);
+        selectedCheckOut.setDate(selectedCheckIn.getDate() + 3);
+        let currentMonth = new Date(selectedCheckIn);
+        let selectingStart = true;
+
+        // Set hidden input values
+        document.getElementById('checkIn').value = formatDateLocal(selectedCheckIn);
+        document.getElementById('checkOut').value = formatDateLocal(selectedCheckOut);
+
+        // Update date display
+        updateDateDisplay();
+        renderCalendar();
+        renderCodes();
+
+        function formatDisplayDate(date) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[date.getMonth()]} ${date.getDate()}`;
+        }
+
+        function updateDateDisplay() {
+            const nights = Math.ceil((selectedCheckOut - selectedCheckIn) / (1000 * 60 * 60 * 24));
+            document.getElementById('dateRangeText').innerHTML =
+                `${formatDisplayDate(selectedCheckIn)} - ${formatDisplayDate(selectedCheckOut)} <span class="nights">${nights} night${nights !== 1 ? 's' : ''}</span>`;
+            document.getElementById('nightsDisplay').innerHTML = `<strong>${nights} night${nights !== 1 ? 's' : ''}</strong> selected`;
+        }
+
+        function toggleDatePicker(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('dateDropdown');
+            dropdown.classList.toggle('open');
+            if (dropdown.classList.contains('open')) {
+                currentMonth = new Date(selectedCheckIn);
+                renderCalendar();
+            }
+        }
+
+        function changeMonth(delta) {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendarMonth').textContent = `${months[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+
+            const grid = document.getElementById('calendarGrid');
+            // Clear only the day cells, keeping the headers
+            const dayElements = grid.querySelectorAll('.calendar-day');
+            dayElements.forEach(el => el.remove());
+
+            const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+            const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+            const startDayOfWeek = firstDay.getDay();
+
+            // Empty cells before first day
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'calendar-day empty';
+                grid.appendChild(empty);
+            }
+
+            // Days of month
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+
+                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                const dateStr = date.toISOString().split('T')[0];
+
+                // Check if past
+                if (date < new Date(today.toISOString().split('T')[0])) {
+                    dayEl.classList.add('disabled');
+                } else {
+                    // Check selection state
+                    const checkInStr = selectedCheckIn.toISOString().split('T')[0];
+                    const checkOutStr = selectedCheckOut.toISOString().split('T')[0];
+
+                    if (dateStr === checkInStr && dateStr === checkOutStr) {
+                        dayEl.classList.add('range-start', 'range-end');
+                    } else if (dateStr === checkInStr) {
+                        dayEl.classList.add('range-start');
+                    } else if (dateStr === checkOutStr) {
+                        dayEl.classList.add('range-end');
+                    } else if (date > selectedCheckIn && date < selectedCheckOut) {
+                        dayEl.classList.add('in-range');
+                    }
+
+                    dayEl.onclick = (e) => { e.stopPropagation(); selectDate(date); };
+                }
+
+                grid.appendChild(dayEl);
+            }
+        }
+
+        function selectDate(date) {
+            if (selectingStart) {
+                selectedCheckIn = date;
+                selectedCheckOut = new Date(date);
+                selectedCheckOut.setDate(date.getDate() + 1);
+                selectingStart = false;
+                document.getElementById('nightsDisplay').textContent = 'Now select check-out date';
+            } else {
+                if (date <= selectedCheckIn) {
+                    selectedCheckIn = date;
+                    selectedCheckOut = new Date(date);
+                    selectedCheckOut.setDate(date.getDate() + 1);
+                } else {
+                    selectedCheckOut = date;
+                    selectingStart = true;
+                }
+            }
+            renderCalendar();
+            updateDateDisplay();
+        }
+
+        function applyDateRange() {
+            document.getElementById('checkIn').value = formatDateLocal(selectedCheckIn);
+            document.getElementById('checkOut').value = formatDateLocal(selectedCheckOut);
+            document.getElementById('dateDropdown').classList.remove('open');
+            selectingStart = true;
+        }
+
+        // Close date picker when clicking outside
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('dateRangePicker');
+            const dropdown = document.getElementById('dateDropdown');
+            if (!picker.contains(e.target) && dropdown.classList.contains('open')) {
+                dropdown.classList.remove('open');
+                selectingStart = true;
+            }
+        });
+
+        // Code Selector Modal
+        function toggleSettings() {
+            document.getElementById('codeModal').classList.toggle('open');
+            document.getElementById('codeModalOverlay').classList.toggle('open');
+            if (document.getElementById('codeModal').classList.contains('open')) {
+                renderCodes();
+                updateSelectionSummary();
+            }
+        }
+
+        function toggleAddCode() {
+            const form = document.getElementById('addCodeForm');
+            form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        // Helper to get display code (STD instead of BASELINE)
+        function getDisplayCode(code) {
+            return CODE_DISPLAY[code] || code;
+        }
+
+        // Autocomplete functions
+        function onDestinationInput() {
+            const input = document.getElementById('destination');
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const query = input.value.trim().toLowerCase();
+
+            if (query.length < 2) {
+                dropdown.classList.remove('open');
+                return;
+            }
+
+            const matches = DESTINATIONS.filter(d =>
+                d.name.toLowerCase().includes(query) ||
+                d.region.toLowerCase().includes(query)
+            ).slice(0, 8);
+
+            if (matches.length === 0) {
+                dropdown.classList.remove('open');
+                return;
+            }
+
+            autocompleteSelectedIndex = -1;
+            renderAutocomplete(matches);
+            dropdown.classList.add('open');
+        }
+
+        function onDestinationFocus() {
+            const input = document.getElementById('destination');
+            if (input.value.trim().length >= 2) {
+                onDestinationInput();
+            }
+        }
+
+        function onDestinationKeydown(e) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+
+            if (!dropdown.classList.contains('open') || items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                autocompleteSelectedIndex = Math.min(autocompleteSelectedIndex + 1, items.length - 1);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, 0);
+                updateAutocompleteSelection(items);
+            } else if (e.key === 'Enter' && autocompleteSelectedIndex >= 0) {
+                e.preventDefault();
+                items[autocompleteSelectedIndex].click();
+            } else if (e.key === 'Escape') {
+                dropdown.classList.remove('open');
+            }
+        }
+
+        function updateAutocompleteSelection(items) {
+            items.forEach((item, i) => {
+                item.classList.toggle('selected', i === autocompleteSelectedIndex);
+            });
+            if (autocompleteSelectedIndex >= 0) {
+                items[autocompleteSelectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function renderAutocomplete(matches) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const icons = {
+                city: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>',
+                landmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7 12 8 12s8-6.6 8-12a8 8 0 0 0-8-8z"/></svg>',
+                airport: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>'
+            };
+
+            dropdown.innerHTML = matches.map((d, i) => `
+                <div class="autocomplete-item" onclick="selectDestination('${d.name}', '${d.region}')">
+                    <div class="autocomplete-icon ${d.type}">${icons[d.type]}</div>
+                    <div class="autocomplete-text">
+                        <div class="autocomplete-main">${d.name}</div>
+                        <div class="autocomplete-sub">${d.region}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectDestination(name, region) {
+            // Extract country from region for the search
+            const parts = region.split(', ');
+            const country = parts[parts.length - 1];
+            document.getElementById('destination').value = `${name}, ${country}`;
+            document.getElementById('autocompleteDropdown').classList.remove('open');
+        }
+
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            const wrapper = document.querySelector('.autocomplete-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('autocompleteDropdown').classList.remove('open');
+            }
+        });
+
+        // SVG Icons for steps (line style)
+        const STEP_ICONS = {
+            globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+            clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4m0 10v4M3 12h4m10 0h4"/><path d="M5.6 5.6l2.8 2.8m7.2 7.2l2.8 2.8M5.6 18.4l2.8-2.8m7.2-7.2l2.8-2.8"/></svg>',
+            check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+        };
+
+        // State
+        let allResults = [];
+        let currentView = 'card';
+        let currentGrouping = 'property';
+        let currentCurrency = localStorage.getItem('ritz-currency') || 'AUD';
+        let lastSearchParams = null; // Store for booking links
+
+        // Currency symbols
+        const CURRENCY_SYMBOLS = {
+            'AUD': 'A$', 'USD': '$', 'EUR': '€', 'GBP': '£',
+            'CAD': 'C$', 'NZD': 'NZ$', 'SGD': 'S$', 'JPY': '¥'
+        };
+
+        // Get brand logo SVG from hotel name or brand name
+        // (BRAND_NAME_TO_CODE is defined in brand-logos.js)
+        // Brand matching patterns in priority order (most specific first)
+        // Each entry: [pattern to match, brand code for logo]
+        const BRAND_PATTERNS = [
+            // Luxury brands (most distinctive names)
+            ['Ritz-Carlton Reserve', 'RS'],
+            ['Ritz-Carlton', 'RZ'],
+            ['St. Regis', 'XR'],
+            ['St Regis', 'XR'],
+            ['JW Marriott', 'JW'],
+            ['EDITION', 'EB'],
+            ['Edition', 'EB'],
+            ['Luxury Collection', 'LC'],
+            ['Bulgari', 'BA'],
+
+            // W Hotels (tricky - need word boundary)
+            ['W Hotel', 'WH'],
+
+            // Collections
+            ['Autograph Collection', 'AR'],
+            ['Tribute Portfolio', 'TX'],
+            ['Design Hotels', 'DS'],
+
+            // "By Sheraton/Marriott/Westin" brands - MUST come before parent brands
+            ['Four Points by Sheraton', 'FP'],
+            ['Four Points', 'FP'],
+            ['Element by Westin', 'EL'],
+            ['Element', 'EL'],
+
+            // "By Marriott" brands - MUST come before "Marriott"
+            ['Courtyard by Marriott', 'CY'],
+            ['Courtyard', 'CY'],
+            ['Fairfield by Marriott', 'FI'],
+            ['Fairfield Inn', 'FI'],
+            ['Fairfield', 'FI'],
+            ['SpringHill Suites', 'SH'],
+            ['SpringHill', 'SH'],
+            ['Residence Inn by Marriott', 'RI'],
+            ['Residence Inn', 'RI'],
+            ['TownePlace Suites', 'TS'],
+            ['TownePlace', 'TS'],
+            ['AC Hotels by Marriott', 'AK'],
+            ['AC Hotels', 'AK'],
+            ['AC Hotel', 'AK'],
+            ['Marriott Executive Apartments', 'MG'],
+
+            // Full-service brands
+            ['Sheraton Grand', 'SI'],
+            ['Sheraton', 'SI'],
+            ['Le Méridien', 'MD'],
+            ['Le Meridien', 'MD'],
+            ['Westin', 'WI'],
+            ['Renaissance', 'BR'],
+            ['Delta Hotels', 'DE'],
+            ['Gaylord', 'GE'],
+
+            // Select brands
+            ['Aloft', 'AL'],
+            ['Moxy', 'OX'],
+            ['Protea', 'PR'],
+
+            // Generic Marriott - MUST be last
+            ['Marriott', 'MC'],
+        ];
+
+        // Get brand logo SVG from hotel name or brand name
+        function getBrandLogo(hotelName, brandName) {
+            // Try brandName first if provided
+            if (brandName) {
+                const code = BRAND_NAME_TO_CODE[brandName];
+                if (code && BRAND_LOGO_SVGS[code]) {
+                    return BRAND_LOGO_SVGS[code];
+                }
+                if (BRAND_LOGO_SVGS[brandName]) {
+                    return BRAND_LOGO_SVGS[brandName];
+                }
+            }
+
+            // Match against hotel name using priority-ordered patterns
+            if (hotelName) {
+                for (const [pattern, code] of BRAND_PATTERNS) {
+                    if (hotelName.includes(pattern)) {
+                        return BRAND_LOGO_SVGS[code];
+                    }
+                }
+
+                // Special case: W Hotels often just start with "W "
+                if (hotelName.startsWith('W ') || hotelName.includes(' W ')) {
+                    return BRAND_LOGO_SVGS['WH'];
+                }
+            }
+
+            return null;
+        }
+
+        // Initialize currency selector
+        document.getElementById('currencySelect').value = currentCurrency;
+
+        function setCurrency(currency) {
+            currentCurrency = currency;
+            localStorage.setItem('ritz-currency', currency);
+            if (allResults.length > 0) renderResults();
+        }
+
+        function getCurrencySymbol() {
+            return CURRENCY_SYMBOLS[currentCurrency] || '$';
+        }
+
+        // Generate booking URL for a specific code
+        function getBookingUrl(code) {
+            if (!lastSearchParams) return '#';
+            const { city, country, checkIn, checkOut } = lastSearchParams;
+            const fromDate = formatUrlDate(checkIn);
+            const toDate = formatUrlDate(checkOut);
+            const checkInDate = new Date(checkIn);
+            const checkOutDate = new Date(checkOut);
+            const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+
+            let url = `https://www.marriott.com/search/findHotels.mi?fromDate=${fromDate}&toDate=${toDate}&lengthOfStay=${nights}&destinationAddress.city=${encodeURIComponent(city)}`;
+            if (country) url += `&destinationAddress.country=${country}`;
+            if (code && code !== 'BASELINE') url += `&clusterCode=corp&corporateCode=${encodeURIComponent(code)}`;
+            return url;
+        }
+
+        function formatUrlDate(dateStr) {
+            // Parse date string directly to avoid timezone issues
+            const [year, month, day] = dateStr.split('-');
+            return `${month}/${day}/${year}`;
+        }
+
+        function parseDestination(dest) {
+            const parts = dest.split(',').map(p => p.trim());
+            const countryMap = {
+                'australia': 'AU', 'usa': 'US', 'united states': 'US', 'uk': 'GB',
+                'canada': 'CA', 'japan': 'JP', 'germany': 'DE', 'france': 'FR',
+                'singapore': 'SG', 'new zealand': 'NZ', 'thailand': 'TH', 'hong kong': 'HK'
+            };
+            let country = parts.length > 1 ? (countryMap[parts[1].toLowerCase()] || parts[1].toUpperCase().substring(0, 2)) : '';
+            return { city: parts[0], country };
+        }
+
+        async function runSearch() {
+            const destination = document.getElementById('destination').value.trim();
+            const checkInVal = document.getElementById('checkIn').value;
+            const checkOutVal = document.getElementById('checkOut').value;
+
+            if (!destination || !checkInVal || !checkOutVal) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Check if batch search is needed (more than 10 codes)
+            const activeCodes = getActiveCodes();
+            if (activeCodes.length > BATCH_CONFIG.MAX_TABS_PER_BATCH) {
+                return runBatchSearch();
+            }
+
+            const { city, country } = parseDestination(destination);
+
+            // Store search params for booking links
+            lastSearchParams = { city, country, checkIn: checkInVal, checkOut: checkOutVal };
+
+            // Show loading with steps
+            document.getElementById('searchBtn').disabled = true;
+            document.getElementById('searchBtn').textContent = 'Searching...';
+            document.getElementById('toolbar').style.display = 'none';
+
+            const loadingHTML = `
+                <div class="loading-container">
+                    <h3>Comparing Corporate Rates</h3>
+                    <div class="progress-steps">
+                        <div class="step active" id="step1">
+                            <div class="step-icon active">${STEP_ICONS.globe}</div>
+                            <div class="step-content">
+                                <div class="step-title">Opening Browser Tabs</div>
+                                <div class="step-desc">Loading Marriott search pages for each code</div>
+                            </div>
+                        </div>
+                        <div class="step pending" id="step2">
+                            <div class="step-icon pending">${STEP_ICONS.clock}</div>
+                            <div class="step-content">
+                                <div class="step-title">Waiting for Pages</div>
+                                <div class="step-desc">Letting pages fully load with rates</div>
+                            </div>
+                        </div>
+                        <div class="step pending" id="step3">
+                            <div class="step-icon pending">${STEP_ICONS.chart}</div>
+                            <div class="step-content">
+                                <div class="step-title">Extracting Data</div>
+                                <div class="step-desc">Parsing hotel names, prices, and details</div>
+                            </div>
+                        </div>
+                        <div class="step pending" id="step4">
+                            <div class="step-icon pending">${STEP_ICONS.sparkle}</div>
+                            <div class="step-content">
+                                <div class="step-title">Preparing Results</div>
+                                <div class="step-desc">Comparing rates and calculating savings</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('resultsBody').innerHTML = loadingHTML;
+
+            // Animate steps
+            setTimeout(() => updateStep(1, 2), 2000);
+            setTimeout(() => updateStep(2, 3), 8000);
+            setTimeout(() => updateStep(3, 4), 11000);
+
+            try {
+                const res = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        city,
+                        country,
+                        checkIn: checkInVal,
+                        checkOut: checkOutVal,
+                        codes: getActiveCodes()
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    allResults = data.results;
+                    document.getElementById('toolbar').style.display = 'flex';
+                    document.getElementById('statusPill').textContent = 'Complete';
+                    renderResults();
+                } else {
+                    throw new Error(data.error || 'Search failed');
+                }
+
+            } catch (error) {
+                document.getElementById('resultsBody').innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('searchBtn').disabled = false;
+                document.getElementById('searchBtn').textContent = 'Search';
+            }
+        }
+
+        // Batch search for large code selections
+        async function runBatchSearch() {
+            const destination = document.getElementById('destination').value.trim();
+            const checkInVal = document.getElementById('checkIn').value;
+            const checkOutVal = document.getElementById('checkOut').value;
+
+            if (!destination || !checkInVal || !checkOutVal) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const { city, country } = parseDestination(destination);
+            const codes = getActiveCodes();
+            const totalBatches = Math.ceil(codes.length / BATCH_CONFIG.MAX_TABS_PER_BATCH);
+
+            // Store search params for booking links
+            lastSearchParams = { city, country, checkIn: checkInVal, checkOut: checkOutVal };
+
+            // Show batch progress UI
+            document.getElementById('searchBtn').disabled = true;
+            document.getElementById('searchBtn').textContent = 'Searching...';
+            document.getElementById('toolbar').style.display = 'none';
+
+            const batchProgressHTML = `
+                <div class="batch-progress-container">
+                    <h3>Comparing Corporate Rates</h3>
+                    <p class="batch-subtitle">${codes.length} codes in ${totalBatches} batch${totalBatches > 1 ? 'es' : ''}</p>
+
+                    <div class="batch-overall-progress">
+                        <div class="batch-progress-bar">
+                            <div class="batch-progress-fill" id="batchProgressFill" style="width: 0%"></div>
+                        </div>
+                        <div class="batch-progress-text">
+                            <span id="batchProgressPercent">0%</span>
+                            <span id="batchProgressEta"></span>
+                        </div>
+                    </div>
+
+                    <div class="batch-steps" id="batchSteps">
+                        ${Array.from({length: totalBatches}, (_, i) => `
+                            <div class="batch-step ${i === 0 ? 'active' : 'pending'}" id="batchStep${i}">
+                                <div class="batch-step-indicator">${i + 1}</div>
+                                <div class="batch-step-info">
+                                    <span class="batch-step-label">Batch ${i + 1}</span>
+                                    <span class="batch-step-codes">${Math.min(BATCH_CONFIG.MAX_TABS_PER_BATCH, codes.length - i * BATCH_CONFIG.MAX_TABS_PER_BATCH)} codes</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="batch-status" id="batchStatus">
+                        <span class="batch-status-icon">${STEP_ICONS.globe}</span>
+                        <span class="batch-status-text">Opening tabs for batch 1...</span>
+                    </div>
+
+                    <div class="batch-preview" id="batchPreview">
+                        <span class="batch-preview-label">Properties found:</span>
+                        <span class="batch-preview-count" id="batchPreviewCount">0</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('resultsBody').innerHTML = batchProgressHTML;
+
+            // Accumulate results across batches
+            let accumulatedResults = [];
+            const startTime = Date.now();
+
+            try {
+                for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                    // Update batch step UI
+                    if (batchIdx > 0) {
+                        const prevStep = document.getElementById(`batchStep${batchIdx - 1}`);
+                        if (prevStep) {
+                            prevStep.classList.remove('active');
+                            prevStep.classList.add('done');
+                            prevStep.querySelector('.batch-step-indicator').innerHTML = STEP_ICONS.check;
+                        }
+                    }
+                    const currentStep = document.getElementById(`batchStep${batchIdx}`);
+                    if (currentStep) {
+                        currentStep.classList.remove('pending');
+                        currentStep.classList.add('active');
+                    }
+
+                    // Update status
+                    updateBatchStatus('globe', `Opening tabs for batch ${batchIdx + 1}...`);
+
+                    // Calculate progress
+                    const progressPercent = Math.round((batchIdx / totalBatches) * 100);
+                    document.getElementById('batchProgressFill').style.width = `${progressPercent}%`;
+                    document.getElementById('batchProgressPercent').textContent = `${progressPercent}%`;
+
+                    // ETA calculation
+                    if (batchIdx > 0) {
+                        const elapsed = Date.now() - startTime;
+                        const avgBatchTime = elapsed / batchIdx;
+                        const remainingBatches = totalBatches - batchIdx;
+                        const etaMs = avgBatchTime * remainingBatches;
+                        const etaMin = Math.ceil(etaMs / 60000);
+                        document.getElementById('batchProgressEta').textContent = `~${etaMin} min remaining`;
+                    }
+
+                    // Make batch request
+                    const res = await fetch('/api/search-batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            city,
+                            country,
+                            checkIn: checkInVal,
+                            checkOut: checkOutVal,
+                            codes,
+                            batchIndex: batchIdx,
+                            batchSize: BATCH_CONFIG.MAX_TABS_PER_BATCH
+                        })
+                    });
+
+                    const data = await res.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || `Batch ${batchIdx + 1} failed`);
+                    }
+
+                    // Accumulate results
+                    accumulatedResults = [...accumulatedResults, ...data.results];
+
+                    // Update preview count
+                    const totalHotels = accumulatedResults.reduce((sum, r) => sum + (r.hotels?.length || 0), 0);
+                    document.getElementById('batchPreviewCount').textContent = totalHotels;
+
+                    updateBatchStatus('chart', `Batch ${batchIdx + 1} complete - ${data.codesProcessed} codes processed`);
+
+                    // Inter-batch delay (except for last batch)
+                    if (!data.isLastBatch) {
+                        updateBatchStatus('clock', `Preparing batch ${batchIdx + 2}...`);
+                        await new Promise(resolve => setTimeout(resolve, BATCH_CONFIG.INTER_BATCH_DELAY));
+                    }
+                }
+
+                // Mark final batch as done
+                const finalStep = document.getElementById(`batchStep${totalBatches - 1}`);
+                if (finalStep) {
+                    finalStep.classList.remove('active');
+                    finalStep.classList.add('done');
+                    finalStep.querySelector('.batch-step-indicator').innerHTML = STEP_ICONS.check;
+                }
+
+                // Complete progress
+                document.getElementById('batchProgressFill').style.width = '100%';
+                document.getElementById('batchProgressPercent').textContent = '100%';
+                document.getElementById('batchProgressEta').textContent = 'Complete!';
+                updateBatchStatus('sparkle', 'Preparing results...');
+
+                // Brief pause before showing results
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Set results and render
+                allResults = accumulatedResults;
+                document.getElementById('toolbar').style.display = 'flex';
+                document.getElementById('statusPill').textContent = 'Complete';
+                renderResults();
+
+            } catch (error) {
+                document.getElementById('resultsBody').innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('searchBtn').disabled = false;
+                document.getElementById('searchBtn').textContent = 'Search';
+            }
+        }
+
+        function updateBatchStatus(icon, text) {
+            const statusEl = document.getElementById('batchStatus');
+            if (statusEl) {
+                statusEl.querySelector('.batch-status-icon').innerHTML = STEP_ICONS[icon] || STEP_ICONS.globe;
+                statusEl.querySelector('.batch-status-text').textContent = text;
+            }
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.toolbar .view-toggle')[0].querySelectorAll('button').forEach((b, i) => {
+                b.classList.toggle('active', (view === 'card' && i === 0) || (view === 'list' && i === 1));
+            });
+            renderResults();
+        }
+
+        function setGrouping(grouping) {
+            currentGrouping = grouping;
+            document.querySelectorAll('.toolbar .view-toggle')[1].querySelectorAll('button').forEach((b, i) => {
+                b.classList.toggle('active', (grouping === 'property' && i === 0) || (grouping === 'code' && i === 1));
+            });
+            renderResults();
+        }
+
+        function renderResults() {
+            if (!allResults || allResults.length === 0) {
+                document.getElementById('resultsBody').innerHTML = '<div class="empty-state"><h3>No Results</h3></div>';
+                return;
+            }
+
+            const sortBy = document.getElementById('sortBy').value;
+
+            // Build property-centric data
+            const properties = {};
+            const baseline = allResults.find(r => r.code === 'BASELINE') || { hotels: [] };
+            const baselinePrices = {};
+            baseline.hotels.forEach(h => { baselinePrices[h.name] = h.price; });
+
+            allResults.forEach(result => {
+                const code = result.code || 'BASELINE';
+                result.hotels.forEach(hotel => {
+                    if (!properties[hotel.name]) {
+                        properties[hotel.name] = {
+                            name: hotel.name,
+                            rating: hotel.rating,
+                            reviewCount: hotel.reviewCount,
+                            distance: hotel.distance,
+                            description: hotel.description,
+                            imageUrl: hotel.imageUrl,
+                            rates: {}
+                        };
+                    }
+                    properties[hotel.name].rates[code] = hotel.price;
+                    if (hotel.rating && !properties[hotel.name].rating) properties[hotel.name].rating = hotel.rating;
+                    if (hotel.description && !properties[hotel.name].description) properties[hotel.name].description = hotel.description;
+                    if (hotel.imageUrl && !properties[hotel.name].imageUrl) properties[hotel.name].imageUrl = hotel.imageUrl;
+                    if (hotel.distance && !properties[hotel.name].distance) properties[hotel.name].distance = hotel.distance;
+                });
+            });
+
+            let propertyList = Object.values(properties);
+
+            // Calculate best price and savings
+            propertyList.forEach(prop => {
+                const prices = Object.entries(prop.rates)
+                    .filter(([code, price]) => price && price !== 'N/A')
+                    .map(([code, price]) => ({ code, price }));
+
+                if (prices.length > 0) {
+                    const best = prices.reduce((a, b) => a.price < b.price ? a : b);
+                    prop.bestCode = best.code;
+                    prop.bestPrice = best.price;
+                    prop.savings = (baselinePrices[prop.name] || prop.bestPrice) - prop.bestPrice;
+                } else {
+                    prop.bestCode = null;
+                    prop.bestPrice = null;
+                    prop.savings = 0;
+                }
+            });
+
+            // Sort
+            const [sortField, sortDir] = sortBy.split('-');
+            propertyList.sort((a, b) => {
+                let valA, valB;
+                switch (sortField) {
+                    case 'savings': valA = a.savings || 0; valB = b.savings || 0; break;
+                    case 'price': valA = a.bestPrice || 9999; valB = b.bestPrice || 9999; break;
+                    case 'name': valA = a.name; valB = b.name; break;
+                    case 'rating': valA = a.rating || 0; valB = b.rating || 0; break;
+                    default: valA = a.name; valB = b.name;
+                }
+                if (typeof valA === 'string') {
+                    return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return sortDir === 'asc' ? valA - valB : valB - valA;
+            });
+
+            document.getElementById('resultCount').textContent = `${propertyList.length} properties`;
+
+            // Render
+            if (currentGrouping === 'property') {
+                if (currentView === 'card') {
+                    renderCardsView(propertyList, baselinePrices);
+                } else {
+                    renderListView(propertyList, baselinePrices);
+                }
+            } else {
+                renderByCodeView(propertyList, baselinePrices);
+            }
+        }
+
+        function renderCardsView(properties, baselinePrices) {
+            const allCodes = [...new Set(allResults.map(r => r.code))];
+            const sym = getCurrencySymbol();
+
+            const html = `
+                <div class="cards-grid">
+                    ${properties.map((prop, idx) => {
+                        // Get available rates (non-N/A) and sort by price (lowest first)
+                        const availableRates = allCodes
+                            .map(code => ({ code, price: prop.rates[code] }))
+                            .filter(r => r.price && r.price !== 'N/A')
+                            .sort((a, b) => a.price - b.price);
+                        const unavailableCount = allCodes.length - availableRates.length;
+
+                        // Sort all codes by price for the expanded view too
+                        const sortedAllRates = allCodes
+                            .map(code => ({ code, price: prop.rates[code] }))
+                            .sort((a, b) => {
+                                if (!a.price || a.price === 'N/A') return 1;
+                                if (!b.price || b.price === 'N/A') return -1;
+                                return a.price - b.price;
+                            });
+
+                        return `
+                        <div class="hotel-card">
+                            <div class="hotel-card-image" style="${prop.imageUrl ? `background-image: url('${prop.imageUrl}')` : ''}">
+                                ${!prop.imageUrl ? '<svg class="hotel-placeholder-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>' : ''}
+                                ${(() => { const logo = getBrandLogo(prop.name, prop.brandName); return logo ? `<div class="brand-logo">${logo}</div>` : ''; })()}
+                                ${prop.savings > 0 ? `<div class="savings-badge">Save ${sym}${prop.savings}</div>` : ''}
+                            </div>
+                            <div class="hotel-card-content">
+                                <div class="hotel-card-name">${prop.name}</div>
+                                <div class="hotel-card-meta">
+                                    ${prop.rating ? `<span><svg class="star-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${prop.rating}</span>` : ''}
+                                    ${prop.distance ? `<span>${prop.distance}</span>` : ''}
+                                </div>
+                                ${prop.bestPrice ? `
+                                    <div class="best-price-display">
+                                        <span class="best-price-amount">${sym}${prop.bestPrice}</span>
+                                        <span class="best-price-label">Best: ${getDisplayCode(prop.bestCode)}</span>
+                                    </div>
+                                ` : '<div class="best-price-display"><span class="best-price-na">No rates available</span></div>'}
+                                <div class="price-summary">
+                                    ${availableRates.slice(0, 3).map(r => {
+                                        const isBest = prop.bestCode === r.code;
+                                        const baselinePrice = baselinePrices[prop.name];
+                                        const rateSavings = r.code !== 'BASELINE' && baselinePrice && r.price ? baselinePrice - r.price : 0;
+                                        const isBaseline = r.code === 'BASELINE';
+                                        return `<a href="${getBookingUrl(r.code)}" target="_blank" class="rate-chip ${isBest ? 'best' : ''} ${isBaseline ? 'baseline' : ''}" title="Book with ${getDisplayCode(r.code)}">
+                                            <span class="rate-chip-code">${getDisplayCode(r.code)}</span>
+                                            <span class="rate-chip-price">${sym}${r.price}${rateSavings > 0 ? ` <span class="chip-savings">-${sym}${rateSavings}</span>` : ''}</span>
+                                        </a>`;
+                                    }).join('')}
+                                    ${availableRates.length > 3 || unavailableCount > 0 ? `
+                                        <button class="rate-expand-btn" onclick="toggleCardRates(${idx})">
+                                            +${availableRates.length > 3 ? availableRates.length - 3 : 0}${unavailableCount > 0 ? ' (+' + unavailableCount + ' N/A)' : ''} more
+                                        </button>
+                                    ` : ''}
+                                </div>
+                                <div class="price-list-expanded" id="card-rates-${idx}" style="display: none;">
+                                    ${sortedAllRates.map(r => {
+                                        const code = r.code;
+                                        const price = r.price;
+                                        const isBest = prop.bestCode === code;
+                                        const baselinePrice = baselinePrices[prop.name];
+                                        const savings = code !== 'BASELINE' && baselinePrice && price && price !== 'N/A' ? baselinePrice - price : 0;
+                                        const bookingUrl = getBookingUrl(code);
+
+                                        return `
+                                            <div class="price-row-full">
+                                                <span class="price-code ${code === 'BASELINE' ? 'baseline' : ''} ${isBest ? 'best' : ''}">${getDisplayCode(code)}</span>
+                                                ${price && price !== 'N/A' ? `
+                                                    <a href="${bookingUrl}" target="_blank" class="price-value-link ${isBest ? 'best' : ''}">
+                                                        ${sym}${price}
+                                                        ${savings > 0 ? `<span class="price-savings">-${sym}${savings}</span>` : ''}
+                                                        <svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                                    </a>
+                                                ` : `<a href="${bookingUrl}" target="_blank" class="price-value-link na">N/A <svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`}
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `}).join('')}
+                </div>
+            `;
+
+            document.getElementById('resultsBody').innerHTML = html;
+        }
+
+        function toggleCardRates(idx) {
+            const el = document.getElementById(`card-rates-${idx}`);
+            if (el) {
+                el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        function renderListView(properties, baselinePrices) {
+            const allCodes = [...new Set(allResults.map(r => r.code))];
+            const sym = getCurrencySymbol();
+
+            const html = properties.map((prop, idx) => {
+                // Get available rates sorted by price
+                const availableRates = allCodes
+                    .map(code => ({ code, price: prop.rates[code] }))
+                    .filter(r => r.price && r.price !== 'N/A')
+                    .sort((a, b) => a.price - b.price);
+                const unavailableCount = allCodes.length - availableRates.length;
+
+                // Sort all codes by price for expanded view
+                const sortedAllRates = allCodes
+                    .map(code => ({ code, price: prop.rates[code] }))
+                    .sort((a, b) => {
+                        if (!a.price || a.price === 'N/A') return 1;
+                        if (!b.price || b.price === 'N/A') return -1;
+                        return a.price - b.price;
+                    });
+
+                return `
+                <div class="list-item">
+                    <div class="list-item-header">
+                        <div class="list-item-image" style="${prop.imageUrl ? `background-image: url('${prop.imageUrl}')` : ''}">
+                            ${!prop.imageUrl ? '<svg class="hotel-placeholder-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>' : ''}
+                            ${(() => { const logo = getBrandLogo(prop.name, prop.brandName); return logo ? `<div class="brand-logo brand-logo-small">${logo}</div>` : ''; })()}
+                            ${prop.savings > 0 ? `<div class="savings-badge">Save ${sym}${prop.savings}</div>` : ''}
+                        </div>
+                        <div class="list-item-content">
+                            <div class="list-item-top">
+                                <div class="list-item-info">
+                                    <div class="list-item-name">${prop.name}</div>
+                                    <div class="list-item-meta">
+                                        ${prop.rating ? `<span><svg class="star-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${prop.rating}</span>` : ''}
+                                        ${prop.distance ? `<span>${prop.distance}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="list-item-price-col">
+                                    ${prop.bestPrice ? `
+                                        <div class="list-item-best">${sym}${prop.bestPrice}</div>
+                                        <div class="list-item-best-code">Best: ${getDisplayCode(prop.bestCode)}</div>
+                                    ` : '<span style="color: var(--light-text);">No rates</span>'}
+                                </div>
+                            </div>
+                            <div class="list-item-rates">
+                                ${availableRates.slice(0, 4).map(r => {
+                                    const isBest = prop.bestCode === r.code;
+                                    const isBaseline = r.code === 'BASELINE';
+                                    const baselinePrice = baselinePrices[prop.name];
+                                    const rateSavings = r.code !== 'BASELINE' && baselinePrice && r.price ? baselinePrice - r.price : 0;
+                                    return `<a href="${getBookingUrl(r.code)}" target="_blank" class="rate-chip ${isBest ? 'best' : ''} ${isBaseline ? 'baseline' : ''}" title="Book with ${getDisplayCode(r.code)}">
+                                        <span class="rate-chip-code">${getDisplayCode(r.code)}</span>
+                                        <span class="rate-chip-price">${sym}${r.price}${rateSavings > 0 ? ` <span class="chip-savings">-${sym}${rateSavings}</span>` : ''}</span>
+                                    </a>`;
+                                }).join('')}
+                                ${availableRates.length > 4 || unavailableCount > 0 ? `
+                                    <button class="list-item-expand-btn" onclick="event.stopPropagation(); toggleListItem(${idx})">
+                                        +${availableRates.length > 4 ? availableRates.length - 4 : 0} more${unavailableCount > 0 ? ` (${unavailableCount} N/A)` : ''} ▾
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="list-item-details" id="list-${idx}">
+                        <div class="price-list" style="border-top: none; padding-top: 0;">
+                            ${sortedAllRates.map(r => {
+                                const code = r.code;
+                                const price = r.price;
+                                const isBest = prop.bestCode === code;
+                                const baselinePrice = baselinePrices[prop.name];
+                                const savings = code !== 'BASELINE' && baselinePrice && price && price !== 'N/A' ? baselinePrice - price : 0;
+                                const bookingUrl = getBookingUrl(code);
+
+                                return `
+                                    <div class="price-row-full">
+                                        <span class="price-code ${code === 'BASELINE' ? 'baseline' : ''} ${isBest ? 'best' : ''}">${getDisplayCode(code)}</span>
+                                        ${price && price !== 'N/A' ? `
+                                            <a href="${bookingUrl}" target="_blank" class="price-value-link ${isBest ? 'best' : ''}">
+                                                ${sym}${price}
+                                                ${savings > 0 ? `<span class="price-savings">-${sym}${savings}</span>` : ''}
+                                                <svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                            </a>
+                                        ` : `<a href="${bookingUrl}" target="_blank" class="price-value-link na">N/A <svg class="external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>`}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+
+            document.getElementById('resultsBody').innerHTML = html;
+        }
+
+        function renderByCodeView(properties, baselinePrices) {
+            const allCodes = [...new Set(allResults.map(r => r.code))];
+            const sym = getCurrencySymbol();
+
+            const html = allCodes.map(code => {
+                const hotelsWithCode = properties.filter(p => p.rates[code] && p.rates[code] !== 'N/A');
+                const bookingUrl = getBookingUrl(code);
+
+                return `
+                    <div style="margin-bottom: 32px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--dark);">
+                            <a href="${bookingUrl}" target="_blank" style="font-family: 'SF Mono', Monaco, monospace; background: var(--dark); color: white; padding: 4px 12px; border-radius: 4px; font-size: 13px; text-decoration: none;">${getDisplayCode(code)} ↗</a>
+                            <span style="color: var(--light-text); font-size: 13px;">${hotelsWithCode.length} properties</span>
+                        </div>
+                        ${currentView === 'card' ? `
+                            <div class="cards-grid">
+                                ${hotelsWithCode.map(prop => {
+                                    const price = prop.rates[code];
+                                    const baselinePrice = baselinePrices[prop.name];
+                                    const savings = baselinePrice && price ? baselinePrice - price : 0;
+
+                                    return `
+                                        <div class="hotel-card">
+                                            <div class="hotel-card-image" style="${prop.imageUrl ? `background-image: url('${prop.imageUrl}')` : ''}">
+                                                ${!prop.imageUrl ? '<svg class="hotel-placeholder-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>' : ''}
+                                                ${(() => { const logo = getBrandLogo(prop.name, prop.brandName); return logo ? `<div class="brand-logo">${logo}</div>` : ''; })()}
+                                                ${savings > 0 ? `<div class="savings-badge">Save ${sym}${savings}</div>` : ''}
+                                            </div>
+                                            <div class="hotel-card-content">
+                                                <div class="hotel-card-name">${prop.name}</div>
+                                                <div class="hotel-card-meta">
+                                                    ${prop.rating ? `<span><svg class="star-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${prop.rating}</span>` : ''}
+                                                    ${prop.distance ? `<span>${prop.distance}</span>` : ''}
+                                                </div>
+                                                <a href="${bookingUrl}" target="_blank" style="display: block; font-size: 24px; font-weight: 600; color: var(--green); margin-top: 12px; text-decoration: none;">
+                                                    ${sym}${price}
+                                                    ${savings > 0 ? `<span style="font-size: 13px; font-weight: 400;"> vs ${sym}${baselinePrice} baseline</span>` : ''}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        ` : `
+                            ${hotelsWithCode.map(prop => {
+                                const price = prop.rates[code];
+                                const baselinePrice = baselinePrices[prop.name];
+                                const savings = baselinePrice && price ? baselinePrice - price : 0;
+
+                                return `
+                                    <div class="list-item" style="margin-bottom: 8px;">
+                                        <div class="list-item-header" style="cursor: default;">
+                                            <div class="list-item-image" style="${prop.imageUrl ? `background-image: url('${prop.imageUrl}')` : ''}">
+                                                ${!prop.imageUrl ? '<svg class="hotel-placeholder-icon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>' : ''}
+                                                ${(() => { const logo = getBrandLogo(prop.name, prop.brandName); return logo ? `<div class="brand-logo brand-logo-small">${logo}</div>` : ''; })()}
+                                                ${savings > 0 ? `<div class="savings-badge">-${sym}${savings}</div>` : ''}
+                                            </div>
+                                            <div class="list-item-info">
+                                                <div class="list-item-name">${prop.name}</div>
+                                                <div class="list-item-meta">
+                                                    ${prop.rating ? `<span><svg class="star-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${prop.rating}</span>` : ''}
+                                                    ${prop.distance ? `<span>${prop.distance}</span>` : ''}
+                                                </div>
+                                            </div>
+                                            <a href="${bookingUrl}" target="_blank" class="list-item-best" style="text-decoration: none;">
+                                                ${sym}${price}
+                                                <svg class="external-icon" style="margin-left: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                            </a>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        `}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('resultsBody').innerHTML = html;
+        }
+
+        function toggleListItem(idx) {
+            document.getElementById(`list-${idx}`).classList.toggle('open');
+        }
+
+        function updateStep(completedStep, nextStep) {
+            const completed = document.getElementById(`step${completedStep}`);
+            const next = document.getElementById(`step${nextStep}`);
+
+            if (completed) {
+                completed.classList.remove('active');
+                completed.classList.add('done');
+                completed.querySelector('.step-icon').classList.remove('active');
+                completed.querySelector('.step-icon').classList.add('done');
+                completed.querySelector('.step-icon').innerHTML = STEP_ICONS.check;
+            }
+
+            if (next) {
+                next.classList.remove('pending');
+                next.classList.add('active');
+                next.querySelector('.step-icon').classList.remove('pending');
+                next.querySelector('.step-icon').classList.add('active');
+            }
+        }
+
+        // Initialize brand ticker on landing page
+        (function initBrandTicker() {
+            const ticker = document.getElementById('brandTicker');
+            console.log('Brand ticker init:', { ticker: !!ticker, svgsLoaded: typeof BRAND_LOGO_SVGS !== 'undefined' });
+            if (!ticker || typeof BRAND_LOGO_SVGS === 'undefined') {
+                console.warn('Brand ticker not initialized:', { ticker: !!ticker, svgsLoaded: typeof BRAND_LOGO_SVGS !== 'undefined' });
+                return;
+            }
+
+            // Brand codes to display in ticker (curated selection of major brands)
+            const tickerBrands = [
+                'RZ', 'XR', 'JW', 'WH', 'EB', 'LC', 'MC', 'SI', 'WI', 'MD',
+                'BR', 'CY', 'SH', 'FI', 'RI', 'AL', 'OX', 'AR', 'TX', 'EL',
+                'FP', 'TS', 'DE', 'GE', 'AK', 'PR', 'DS'
+            ];
+
+            // Build ticker content (duplicated for seamless loop)
+            const logos = tickerBrands
+                .filter(code => BRAND_LOGO_SVGS[code])
+                .map(code => `<div class="brand-ticker-item">${BRAND_LOGO_SVGS[code]}</div>`)
+                .join('');
+
+            // Duplicate for seamless infinite scroll
+            ticker.innerHTML = logos + logos;
+
+            // Fix white fills for visibility on light background
+            ticker.querySelectorAll('svg [fill="white"], svg [fill="#FFFFFF"], svg [fill="#ffffff"], svg [fill="#FFF"], svg [fill="#fff"]').forEach(el => {
+                el.setAttribute('fill', '#1c1c1c');
+            });
+        })();
+    </script>
+</body>
+</html>

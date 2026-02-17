@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Ritz-Weaselton</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --gold: #c4a052;
+            --orange: #e85d04;
+            --dark: #1c1c1c;
+            --warm-gray: #f5f3f0;
+            --text: #333;
+            --light-text: #6b6b6b;
+            --border: #e0dcd7;
+            --green: #2e7d32;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: var(--warm-gray);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--warm-gray);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            border-color: var(--gold);
+            background: white;
+        }
+        .back-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+        .header h1 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 24px;
+            font-weight: 500;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .save-indicator {
+            font-size: 12px;
+            color: var(--light-text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .save-indicator.saving {
+            color: var(--orange);
+        }
+        .save-indicator.saved {
+            color: var(--green);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 65px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-section {
+            margin-bottom: 32px;
+        }
+        .sidebar-section h3 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--light-text);
+            margin-bottom: 12px;
+        }
+
+        /* Preset List */
+        .preset-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .preset-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--warm-gray);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-item:hover {
+            border-color: var(--border);
+            background: white;
+        }
+        .preset-item.active {
+            border-color: var(--gold);
+            background: #fdf8ed;
+        }
+        .preset-item.editing {
+            border-color: var(--orange);
+            background: #fff8f0;
+        }
+        .preset-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--warm-gray);
+            border-radius: 8px;
+            color: var(--gold);
+        }
+        .preset-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+        .preset-item.active .preset-icon {
+            background: rgba(196, 160, 82, 0.15);
+        }
+        .preset-item:hover .preset-icon {
+            background: rgba(196, 160, 82, 0.1);
+        }
+        .preset-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .preset-name {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .preset-count {
+            font-size: 11px;
+            color: var(--light-text);
+        }
+        .preset-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .preset-item:hover .preset-actions {
+            opacity: 1;
+        }
+        .preset-action-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--light-text);
+            transition: all 0.2s;
+        }
+        .preset-action-btn:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+        .preset-action-btn.delete:hover {
+            background: #fee;
+            color: #d32f2f;
+        }
+        .preset-action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Add Preset Button */
+        .add-preset-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--light-text);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .add-preset-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        .add-preset-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Selection Summary */
+        .selection-summary {
+            margin-top: auto;
+            padding: 20px;
+            background: var(--warm-gray);
+            border-radius: 12px;
+        }
+        .selection-count {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .selection-number {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--green);
+        }
+        .selection-max {
+            font-size: 18px;
+            color: var(--light-text);
+        }
+        .selection-bar-container {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .selection-bar {
+            height: 100%;
+            background: var(--green);
+            border-radius: 3px;
+            transition: width 0.3s, background 0.3s;
+        }
+        .selection-bar.warning { background: var(--orange); }
+        .selection-bar.limit { background: #d32f2f; }
+        .selection-estimate {
+            text-align: center;
+            font-size: 12px;
+            color: var(--light-text);
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+        .search-bar svg {
+            width: 20px;
+            height: 20px;
+            color: var(--light-text);
+            flex-shrink: 0;
+        }
+        .search-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            outline: none;
+        }
+        .search-bar input::placeholder {
+            color: #999;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            background: white;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--light-text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: var(--text);
+        }
+        .tab.active {
+            background: var(--dark);
+            color: white;
+        }
+
+        /* Codes Grid */
+        .codes-section {
+            margin-bottom: 32px;
+        }
+        .codes-section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .codes-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gold);
+        }
+        .codes-section-count {
+            font-size: 12px;
+            color: var(--light-text);
+            flex: 1;
+        }
+        .section-toggle-btns {
+            display: flex;
+            gap: 4px;
+        }
+        .section-toggle-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--light-text);
+            transition: all 0.2s;
+        }
+        .section-toggle-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+        .section-toggle-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        .section-toggle-btn.active {
+            background: var(--green);
+            border-color: var(--green);
+            color: white;
+        }
+        .section-toggle-btn.clear:hover {
+            border-color: #d32f2f;
+            color: #d32f2f;
+        }
+        .section-toggle-btn.clear.active {
+            background: var(--warm-gray);
+            border-color: var(--border);
+            color: var(--light-text);
+        }
+
+        .codes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .code-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .code-card:hover {
+            border-color: var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .code-card.selected {
+            background: #e8f5e9;
+            border-color: var(--green);
+        }
+        .code-card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .code-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .code-card.selected .code-checkbox {
+            background: var(--green);
+            border-color: var(--green);
+        }
+        .code-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            opacity: 0;
+        }
+        .code-card.selected .code-checkbox svg {
+            opacity: 1;
+        }
+
+
+        .code-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .code-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .code-company {
+            font-size: 12px;
+            color: var(--light-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .code-badges {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .code-badge {
+            font-size: 9px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .code-badge.recommended {
+            background: #fff3e0;
+            color: var(--orange);
+        }
+
+        .code-favorite {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            color: var(--border);
+        }
+        .code-favorite svg {
+            width: 16px;
+            height: 16px;
+        }
+        .code-favorite:hover {
+            color: var(--gold);
+            transform: scale(1.1);
+        }
+        .code-favorite.active {
+            color: var(--gold);
+        }
+        .code-favorite.active svg {
+            fill: var(--gold);
+        }
+
+        /* Add Code Section */
+        .add-code-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+        .add-code-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .add-code-form {
+            display: flex;
+            gap: 12px;
+        }
+        .add-code-form input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .add-code-form input:focus {
+            border-color: var(--gold);
+        }
+        .add-code-form button {
+            padding: 12px 24px;
+            background: var(--gold);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .add-code-form button:hover {
+            background: #b08d3e;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--dark);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 1000;
+            animation: fadeInUp 0.3s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Edit Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            background: white;
+            border-radius: 16px;
+            width: 480px;
+            max-width: 90vw;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .modal.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .modal-close:hover {
+            background: var(--warm-gray);
+        }
+        .modal-close svg {
+            width: 20px;
+            height: 20px;
+        }
+        .modal-body {
+            padding: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--light-text);
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: var(--gold);
+        }
+        .icon-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .icon-option {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--light-text);
+        }
+        .icon-option svg {
+            width: 20px;
+            height: 20px;
+        }
+        .icon-option:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+        .icon-option.selected {
+            border-color: var(--gold);
+            background: #fdf8ed;
+            color: var(--gold);
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary {
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-secondary:hover {
+            border-color: var(--dark);
+        }
+        .btn-primary {
+            background: var(--gold);
+            border: none;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #b08d3e;
+        }
+        .btn-danger {
+            background: white;
+            border: 1px solid #ffcdd2;
+            color: #d32f2f;
+        }
+        .btn-danger:hover {
+            background: #ffebee;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <a href="/" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back
+            </a>
+            <h1>Settings</h1>
+        </div>
+        <div class="header-right">
+            <span class="save-indicator" id="saveIndicator">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                All changes saved
+            </span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Quick Select Presets</h3>
+                <div class="preset-list" id="presetList">
+                    <!-- Presets loaded dynamically -->
+                </div>
+                <button class="add-preset-btn" onclick="openPresetModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add New Preset
+                </button>
+            </div>
+
+            <div class="selection-summary">
+                <div class="selection-count">
+                    <span class="selection-number" id="selectionCount">0</span>
+                    <span class="selection-max">codes</span>
+                </div>
+                <div class="selection-bar-container">
+                    <div class="selection-bar" id="selectionBar" style="width: 0%"></div>
+                </div>
+                <div class="selection-estimate" id="selectionEstimate">Select codes to search</div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="search-bar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search codes or companies..." oninput="filterCodes()">
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="all" onclick="switchTab('all')">All Codes</button>
+                <button class="tab" data-tab="selected" onclick="switchTab('selected')">Selected</button>
+                <button class="tab" data-tab="favorites" onclick="switchTab('favorites')">Favorites</button>
+            </div>
+
+            <div id="codesContainer">
+                <!-- Codes loaded dynamically -->
+            </div>
+
+            <div class="add-code-section">
+                <h3>Add Custom Code</h3>
+                <div class="add-code-form">
+                    <input type="text" id="newCodeInput" placeholder="Code (e.g., ABC123)">
+                    <input type="text" id="newCompanyInput" placeholder="Company name">
+                    <button onclick="addNewCode()">Add Code</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Preset Modal -->
+    <div class="modal-overlay" id="presetModalOverlay" onclick="closePresetModal()"></div>
+    <div class="modal" id="presetModal">
+        <div class="modal-header">
+            <h2 id="presetModalTitle">New Preset</h2>
+            <button class="modal-close" onclick="closePresetModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Preset Name</label>
+                <input type="text" id="presetNameInput" placeholder="e.g., My Tech Companies">
+            </div>
+            <div class="form-group">
+                <label>Icon</label>
+                <div class="icon-picker" id="iconPicker">
+                    <!-- Icons rendered dynamically -->
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Codes (comma-separated)</label>
+                <input type="text" id="presetCodesInput" placeholder="e.g., GGL, AMZ, MCO">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" id="deletePresetBtn" onclick="deletePreset()" style="display: none; margin-right: auto;">Delete</button>
+            <button class="btn btn-secondary" onclick="closePresetModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="savePreset()">Save Preset</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const BATCH_SIZE = 10; // Codes per batch
+        let allCodes = [];
+        let enabledCodes = [];
+        let favoriteCodes = [];
+        let presets = [];
+        let currentTab = 'all';
+        let editingPresetId = null;
+
+        // Icons matching home page style
+        const ICONS = {
+            check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+            tech: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            finance: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+            consulting: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+            star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+            university: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+            government: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/></svg>',
+            airline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
+            membership: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="12" y2="13"/></svg>',
+            default: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>'
+        };
+
+
+        // Load data on page load
+        async function init() {
+            await loadCodes();
+            loadPresets();
+            renderPresets();
+            renderCodes();
+            updateSelectionSummary();
+        }
+
+        // Load codes from server (which reads from .md file)
+        async function loadCodes() {
+            try {
+                const res = await fetch('/api/codes');
+                const data = await res.json();
+                allCodes = data.codes || [];
+
+                // Load enabled codes from localStorage
+                enabledCodes = JSON.parse(localStorage.getItem('marriottEnabledCodes') || '[]');
+                favoriteCodes = JSON.parse(localStorage.getItem('marriottFavoriteCodes') || '[]');
+
+                // If no enabled codes, use recommended ones
+                if (enabledCodes.length === 0) {
+                    enabledCodes = allCodes.filter(c => c.recommended).map(c => c.code);
+                }
+            } catch (e) {
+                console.error('Failed to load codes:', e);
+                showToast('Failed to load codes');
+            }
+        }
+
+        // Load presets from localStorage
+        function loadPresets() {
+            const defaultPresets = [
+                { id: 'quick10', name: 'Quick 10', icon: 'bolt', codes: ['AAA', 'GOV', 'S9R', 'IBM', 'GGL', 'AMZ', 'MCO', 'ACC', 'DTC', 'PCW'], isDefault: true },
+                { id: 'tech', name: 'Top Tech', icon: 'tech', codes: ['GGL', 'AMZ', 'APL', 'MCO', '253151', 'IBM', 'ORA', 'SAP', 'CIS'], isDefault: true },
+                { id: 'finance', name: 'Finance', icon: 'finance', codes: ['GS1', '254797', 'JPM', '2743', 'BOA', 'HSB', 'DBK', 'CIT'], isDefault: true },
+                { id: 'big4', name: 'Big 4 / Consulting', icon: 'consulting', codes: ['ACC', 'DTC', 'PCW', 'KPM', 'ERN', 'EYC'], isDefault: true },
+                { id: 'recommended', name: 'Recommended', icon: 'star', codes: [], isDefault: true, dynamic: 'recommended' }
+            ];
+
+            const savedPresets = JSON.parse(localStorage.getItem('marriottPresets') || '[]');
+            presets = [...defaultPresets, ...savedPresets];
+        }
+
+        // Save presets to localStorage
+        function savePresets() {
+            const customPresets = presets.filter(p => !p.isDefault);
+            localStorage.setItem('marriottPresets', JSON.stringify(customPresets));
+        }
+
+        // Render presets in sidebar
+        function renderPresets() {
+            const container = document.getElementById('presetList');
+            container.innerHTML = presets.map(p => {
+                const codes = p.dynamic === 'recommended'
+                    ? allCodes.filter(c => c.recommended).map(c => c.code)
+                    : p.codes;
+                const iconSvg = ICONS[p.icon] || ICONS.default;
+                return `
+                    <div class="preset-item" onclick="applyPreset('${p.id}')">
+                        <div class="preset-icon">${iconSvg}</div>
+                        <div class="preset-info">
+                            <div class="preset-name">${p.name}</div>
+                            <div class="preset-count">${codes.length} codes</div>
+                        </div>
+                        <div class="preset-actions">
+                            <button class="preset-action-btn" onclick="event.stopPropagation(); editPreset('${p.id}')" title="Edit">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            ${!p.isDefault ? `
+                            <button class="preset-action-btn delete" onclick="event.stopPropagation(); deletePresetById('${p.id}')" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                                </svg>
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Apply preset
+        function applyPreset(presetId) {
+            const preset = presets.find(p => p.id === presetId);
+            if (!preset) return;
+
+            const codes = preset.dynamic === 'recommended'
+                ? allCodes.filter(c => c.recommended).map(c => c.code)
+                : preset.codes;
+
+            enabledCodes = [...codes];
+            saveCodes();
+            renderCodes();
+            updateSelectionSummary();
+            showToast(`Applied "${preset.name}" preset`);
+        }
+
+        // Render codes grid
+        function renderCodes() {
+            const container = document.getElementById('codesContainer');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtered = allCodes.filter(c =>
+                c.code.toLowerCase().includes(searchTerm) ||
+                c.company.toLowerCase().includes(searchTerm)
+            );
+
+            if (currentTab === 'selected') {
+                filtered = filtered.filter(c => enabledCodes.includes(c.code));
+            } else if (currentTab === 'favorites') {
+                filtered = filtered.filter(c => favoriteCodes.includes(c.code));
+            }
+
+            let html = '';
+
+            if (currentTab === 'all') {
+                // Show favorites, then recommended, then all others
+                const favorites = filtered.filter(c => favoriteCodes.includes(c.code));
+                const recommended = filtered.filter(c => c.recommended && !favoriteCodes.includes(c.code));
+                const others = filtered.filter(c => !c.recommended && !favoriteCodes.includes(c.code));
+
+                if (favorites.length > 0) {
+                    html += renderSection('Favorites', favorites, 'favorites');
+                }
+                if (recommended.length > 0) {
+                    html += renderSection('Recommended', recommended, 'recommended');
+                }
+                if (others.length > 0) {
+                    html += renderSection('All Codes', others, 'allcodes');
+                }
+            } else if (currentTab === 'selected') {
+                // Just show all selected codes in one section (no sub-grouping)
+                if (filtered.length > 0) {
+                    html += renderSection('Selected Codes', filtered, 'selectedcodes');
+                }
+            } else if (currentTab === 'favorites') {
+                // Just show favorites
+                if (filtered.length > 0) {
+                    html += renderSection('Favorite Codes', filtered, 'favoritecodes');
+                }
+            }
+
+            if (filtered.length === 0) {
+                html = '<p style="text-align: center; color: var(--light-text); padding: 40px;">No codes found</p>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderSection(title, codes, sectionId = null) {
+            const codesList = codes.map(c => c.code);
+            const selectedInSection = codesList.filter(c => enabledCodes.includes(c)).length;
+            const allSelected = selectedInSection === codes.length;
+            const noneSelected = selectedInSection === 0;
+            const sectionKey = sectionId || title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+            return `
+                <div class="codes-section">
+                    <div class="codes-section-header">
+                        <span class="codes-section-title">${title}</span>
+                        <span class="codes-section-count">${selectedInSection}/${codes.length} selected</span>
+                        <div class="section-toggle-btns">
+                            <button class="section-toggle-btn ${allSelected ? 'active' : ''}"
+                                    onclick="selectAllInSection('${sectionKey}')" title="Select all">
+                                ${ICONS.check}
+                            </button>
+                            <button class="section-toggle-btn clear ${noneSelected ? 'active' : ''}"
+                                    onclick="clearAllInSection('${sectionKey}')" title="Clear all">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="codes-grid" data-section="${sectionKey}">
+                        ${codes.map(c => renderCodeCard(c)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get codes in a section by section ID
+        function getCodesInSection(sectionId) {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = allCodes.filter(c =>
+                c.code.toLowerCase().includes(searchTerm) ||
+                c.company.toLowerCase().includes(searchTerm)
+            );
+
+            switch(sectionId) {
+                case 'favorites':
+                    return filtered.filter(c => favoriteCodes.includes(c.code)).map(c => c.code);
+                case 'recommended':
+                    return filtered.filter(c => c.recommended && !favoriteCodes.includes(c.code)).map(c => c.code);
+                case 'allcodes':
+                    return filtered.filter(c => !c.recommended && !favoriteCodes.includes(c.code)).map(c => c.code);
+                case 'selectedcodes':
+                    return filtered.filter(c => enabledCodes.includes(c.code)).map(c => c.code);
+                case 'favoritecodes':
+                    return filtered.filter(c => favoriteCodes.includes(c.code)).map(c => c.code);
+                default:
+                    return [];
+            }
+        }
+
+        // Select all codes in a section
+        function selectAllInSection(sectionId) {
+            const sectionCodes = getCodesInSection(sectionId);
+            const codesToAdd = sectionCodes.filter(c => !enabledCodes.includes(c));
+            codesToAdd.forEach(c => enabledCodes.push(c));
+
+            saveCodes();
+            renderCodes();
+            updateSelectionSummary();
+        }
+
+        // Clear all codes in a section
+        function clearAllInSection(sectionId) {
+            const sectionCodes = getCodesInSection(sectionId);
+            enabledCodes = enabledCodes.filter(c => !sectionCodes.includes(c));
+            saveCodes();
+            renderCodes();
+            updateSelectionSummary();
+        }
+
+        function renderCodeCard(code) {
+            const isSelected = enabledCodes.includes(code.code);
+            const isFavorite = favoriteCodes.includes(code.code);
+
+            return `
+                <div class="code-card ${isSelected ? 'selected' : ''}"
+                     onclick="toggleCode('${code.code}')">
+                    <div class="code-checkbox">
+                        ${ICONS.check}
+                    </div>
+                    <div class="code-info">
+                        <div class="code-name">${code.code}</div>
+                        <div class="code-company">${code.company}</div>
+                    </div>
+                    ${code.recommended ? '<span class="code-badge recommended">Top</span>' : ''}
+                    <span class="code-favorite ${isFavorite ? 'active' : ''}"
+                          onclick="event.stopPropagation(); toggleFavorite('${code.code}')">${ICONS.star}</span>
+                </div>
+            `;
+        }
+
+        // Toggle code selection
+        function toggleCode(code) {
+            const idx = enabledCodes.indexOf(code);
+            if (idx === -1) {
+                enabledCodes.push(code);
+            } else {
+                enabledCodes.splice(idx, 1);
+            }
+            saveCodes();
+            renderCodes();
+            updateSelectionSummary();
+        }
+
+        // Toggle favorite
+        function toggleFavorite(code) {
+            const idx = favoriteCodes.indexOf(code);
+            if (idx === -1) {
+                favoriteCodes.push(code);
+            } else {
+                favoriteCodes.splice(idx, 1);
+            }
+            localStorage.setItem('marriottFavoriteCodes', JSON.stringify(favoriteCodes));
+            updateCodeFile();
+            renderCodes();
+        }
+
+        // Save enabled codes
+        function saveCodes() {
+            localStorage.setItem('marriottEnabledCodes', JSON.stringify(enabledCodes));
+        }
+
+        // Update selection summary
+        function updateSelectionSummary() {
+            const count = enabledCodes.length;
+            document.getElementById('selectionCount').textContent = count;
+
+            const bar = document.getElementById('selectionBar');
+            const batches = Math.ceil((count + 1) / BATCH_SIZE); // +1 for BASELINE
+            // Scale bar to show batches (each batch = 20% width, capped at 100%)
+            const pct = Math.min(batches * 20, 100);
+            bar.style.width = `${pct}%`;
+            bar.className = 'selection-bar' + (batches >= 5 ? ' warning' : '');
+
+            const time = batches * 0.5;
+            document.getElementById('selectionEstimate').textContent =
+                count > 0 ? `~${time} min (${batches} batch${batches > 1 ? 'es' : ''})` : 'Select codes to search';
+        }
+
+        // Filter codes
+        function filterCodes() {
+            renderCodes();
+        }
+
+        // Switch tab
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            renderCodes();
+        }
+
+        // Add new code
+        async function addNewCode() {
+            const code = document.getElementById('newCodeInput').value.trim().toUpperCase();
+            const company = document.getElementById('newCompanyInput').value.trim();
+
+            if (!code || !company) {
+                showToast('Please enter both code and company');
+                return;
+            }
+
+            if (allCodes.find(c => c.code === code)) {
+                showToast('Code already exists');
+                return;
+            }
+
+            // Add to local array
+            allCodes.push({ code, company, recommended: false });
+
+            // Save to server
+            await updateCodeFile();
+
+            // Clear inputs
+            document.getElementById('newCodeInput').value = '';
+            document.getElementById('newCompanyInput').value = '';
+
+            renderCodes();
+            showToast(`Added code: ${code}`);
+        }
+
+        // Update .md file via API
+        async function updateCodeFile() {
+            try {
+                showSaveIndicator('saving');
+                await fetch('/api/codes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codes: allCodes,
+                        favorites: favoriteCodes
+                    })
+                });
+                showSaveIndicator('saved');
+            } catch (e) {
+                console.error('Failed to save:', e);
+                showToast('Failed to save changes');
+            }
+        }
+
+        // Save indicator
+        function showSaveIndicator(state) {
+            const el = document.getElementById('saveIndicator');
+            el.className = 'save-indicator ' + state;
+            el.innerHTML = state === 'saving'
+                ? '<span class="spinner">↻</span> Saving...'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg> All changes saved';
+        }
+
+        // Render icon picker with SVG icons
+        function renderIconPicker() {
+            const iconKeys = ['bolt', 'tech', 'finance', 'consulting', 'star', 'university', 'government', 'airline', 'membership', 'default'];
+            const picker = document.getElementById('iconPicker');
+            picker.innerHTML = iconKeys.map(key => `
+                <div class="icon-option" data-icon="${key}">${ICONS[key]}</div>
+            `).join('');
+        }
+
+        // Preset modal functions
+        function openPresetModal(preset = null) {
+            editingPresetId = preset ? preset.id : null;
+            document.getElementById('presetModalTitle').textContent = preset ? 'Edit Preset' : 'New Preset';
+            document.getElementById('presetNameInput').value = preset ? preset.name : '';
+            document.getElementById('presetCodesInput').value = preset ? preset.codes.join(', ') : enabledCodes.join(', ');
+            document.getElementById('deletePresetBtn').style.display = preset && !preset.isDefault ? 'block' : 'none';
+
+            // Render icons and select current
+            renderIconPicker();
+            const icon = preset ? preset.icon : 'bolt';
+            document.querySelectorAll('.icon-option').forEach(el => {
+                el.classList.toggle('selected', el.dataset.icon === icon);
+            });
+
+            document.getElementById('presetModalOverlay').classList.add('open');
+            document.getElementById('presetModal').classList.add('open');
+        }
+
+        function closePresetModal() {
+            document.getElementById('presetModalOverlay').classList.remove('open');
+            document.getElementById('presetModal').classList.remove('open');
+            editingPresetId = null;
+        }
+
+        function editPreset(presetId) {
+            const preset = presets.find(p => p.id === presetId);
+            if (preset) openPresetModal(preset);
+        }
+
+        function savePreset() {
+            const name = document.getElementById('presetNameInput').value.trim();
+            const codesStr = document.getElementById('presetCodesInput').value;
+            const codes = codesStr.split(',').map(c => c.trim().toUpperCase()).filter(c => c);
+            const icon = document.querySelector('.icon-option.selected')?.dataset.icon || 'bolt';
+
+            if (!name) {
+                showToast('Please enter a preset name');
+                return;
+            }
+
+            if (editingPresetId) {
+                const preset = presets.find(p => p.id === editingPresetId);
+                if (preset) {
+                    preset.name = name;
+                    preset.icon = icon;
+                    if (!preset.dynamic) preset.codes = codes;
+                }
+            } else {
+                const id = 'custom_' + Date.now();
+                presets.push({ id, name, icon, codes, isDefault: false });
+            }
+
+            savePresets();
+            renderPresets();
+            closePresetModal();
+            showToast(editingPresetId ? 'Preset updated' : 'Preset created');
+        }
+
+        function deletePreset() {
+            if (!editingPresetId) return;
+            deletePresetById(editingPresetId);
+            closePresetModal();
+        }
+
+        function deletePresetById(presetId) {
+            presets = presets.filter(p => p.id !== presetId);
+            savePresets();
+            renderPresets();
+            showToast('Preset deleted');
+        }
+
+        // Icon picker
+        document.getElementById('iconPicker').addEventListener('click', (e) => {
+            const option = e.target.closest('.icon-option');
+            if (option) {
+                document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected'));
+                option.classList.add('selected');
+            }
+        });
+
+        // Toast
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
