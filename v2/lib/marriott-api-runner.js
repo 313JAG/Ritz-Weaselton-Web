@@ -7,6 +7,7 @@ const SEARCH_DISTANCE_METERS = 80467.2;
 const PAGE_SIZE = 40;
 const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
+const { refineHotelLocations } = require('./location-refiner');
 const SEARCH_SORT = {
   fields: [
     { field: 'DISTANCE', direction: 'ASC' },
@@ -459,12 +460,16 @@ function parseHotelNode(node) {
     currency: rateInfo.currency || basic.currency || null,
     rating: property.reviews?.stars?.count ?? null,
     reviewCount: property.reviews?.numberOfReviews?.count ?? null,
+    distanceMeters: node?.distance === null || node?.distance === undefined ? null : Number(node.distance),
     distance: formatDistance(node?.distance),
     description: extractDescription(basic.descriptions),
     imageUrl: toAbsoluteImageUrl(imageUrl),
     brandName: basic.brand?.name || '',
     latitude: basic.latitude === null || basic.latitude === undefined ? null : Number(basic.latitude),
     longitude: basic.longitude === null || basic.longitude === undefined ? null : Number(basic.longitude),
+    seoNickname: property.seoNickname || '',
+    locationSource: 'marriott',
+    locationLabel: '',
   };
 }
 
@@ -539,6 +544,7 @@ async function fetchAllHotelsForCode(params) {
   let offset = 0;
   let total = 0;
   let pageCount = 0;
+  let searchCenter = null;
 
   while (true) {
     const payload = await fetchSearchPage(params, url, offset);
@@ -555,6 +561,20 @@ async function fetchAllHotelsForCode(params) {
     const pageHotels = Array.isArray(connection.edges)
       ? connection.edges.map((edge) => parseHotelNode(edge?.node)).filter((hotel) => hotel.name)
       : [];
+    searchCenter = connection.searchCenter
+      ? {
+          latitude:
+            connection.searchCenter.latitude === null || connection.searchCenter.latitude === undefined
+              ? null
+              : Number(connection.searchCenter.latitude),
+          longitude:
+            connection.searchCenter.longitude === null || connection.searchCenter.longitude === undefined
+              ? null
+              : Number(connection.searchCenter.longitude),
+          address: connection.searchCenter.address || '',
+          name: connection.searchCenter.name || '',
+        }
+      : searchCenter;
 
     for (const hotel of pageHotels) {
       byName.set(hotel.name, hotel);
@@ -584,7 +604,7 @@ async function fetchAllHotelsForCode(params) {
   return {
     success: true,
     error: null,
-    hotels: [...byName.values()],
+    hotels: await refineHotelLocations([...byName.values()], params, searchCenter),
     url,
   };
 }

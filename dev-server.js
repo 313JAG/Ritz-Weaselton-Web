@@ -35,6 +35,8 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
 };
 
+const LEGACY_PATHS = new Set(['/settings', '/settings.html', '/logos.html']);
+
 function resolveStaticPath(pathname) {
   const cleanPath = pathname === '/' ? '/index.html' : pathname;
   const requested = cleanPath.endsWith('/') ? `${cleanPath}index.html` : cleanPath;
@@ -59,6 +61,13 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
 
+  if (LEGACY_PATHS.has(pathname)) {
+    res.statusCode = 302;
+    res.setHeader('Location', '/');
+    res.end();
+    return;
+  }
+
   if (routes[pathname]) {
     req.query = Object.fromEntries(url.searchParams.entries());
     return routes[pathname](req, res);
@@ -73,6 +82,12 @@ const server = http.createServer(async (req, res) => {
 
   const filePath = resolveStaticPath(pathname);
   if (!filePath) {
+    if (!pathname.startsWith('/api/')) {
+      const indexPath = path.join(STATIC_ROOT, 'index.html');
+      res.setHeader('Content-Type', MIME_TYPES['.html']);
+      fs.createReadStream(indexPath).pipe(res);
+      return;
+    }
     res.statusCode = 404;
     res.end('Not found');
     return;
