@@ -3,3 +3,7 @@ node_modules/
 *.scpt
 /tmp/
 .env
+v2/data/
+v2/node_modules/
+.vercel/
+.vercel

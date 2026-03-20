@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "installCommand": "",
+  "cleanUrls": true,
+  "functions": {
+    "api/search-jobs.js": { "maxDuration": 60 },
+    "api/search-job.js": { "maxDuration": 10 },
+    "api/retry-failed.js": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    {
+      "source": "/api/search-jobs/:id/retry-failed",
+      "destination": "/api/retry-failed?id=:id"
+    },
+    {
+      "source": "/api/search-jobs/:id",
+      "destination": "/api/search-job?id=:id"
+    }
+  ]
+}
