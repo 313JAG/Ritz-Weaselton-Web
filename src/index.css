@@ -49,38 +49,38 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.553 0.195 38.402);
-    --primary-foreground: oklch(0.98 0.016 73.684);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --background: oklch(0.971 0.015 82.205);
+    --foreground: oklch(0.258 0.03 54.899);
+    --card: oklch(0.986 0.009 79.216);
+    --card-foreground: oklch(0.258 0.03 54.899);
+    --popover: oklch(0.989 0.007 79.707);
+    --popover-foreground: oklch(0.258 0.03 54.899);
+    --primary: oklch(0.496 0.095 49.165);
+    --primary-foreground: oklch(0.979 0.007 84.565);
+    --secondary: oklch(0.944 0.015 74.483);
+    --secondary-foreground: oklch(0.319 0.038 53.204);
+    --muted: oklch(0.946 0.009 80.645);
+    --muted-foreground: oklch(0.512 0.025 55.475);
+    --accent: oklch(0.934 0.019 72.846);
+    --accent-foreground: oklch(0.319 0.038 53.204);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.879 0.169 91.605);
-    --chart-2: oklch(0.769 0.188 70.08);
-    --chart-3: oklch(0.666 0.179 58.318);
-    --chart-4: oklch(0.555 0.163 48.998);
-    --chart-5: oklch(0.473 0.137 46.201);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.646 0.222 41.116);
-    --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --border: oklch(0.874 0.018 72.402);
+    --input: oklch(0.901 0.014 77.338);
+    --ring: oklch(0.61 0.08 49.529);
+    --chart-1: oklch(0.62 0.13 53.2);
+    --chart-2: oklch(0.72 0.08 81.3);
+    --chart-3: oklch(0.55 0.1 35.7);
+    --chart-4: oklch(0.43 0.06 58.2);
+    --chart-5: oklch(0.81 0.06 92.4);
+    --radius: 0rem;
+    --sidebar: oklch(0.976 0.011 81.485);
+    --sidebar-foreground: oklch(0.258 0.03 54.899);
+    --sidebar-primary: oklch(0.496 0.095 49.165);
+    --sidebar-primary-foreground: oklch(0.979 0.007 84.565);
+    --sidebar-accent: oklch(0.944 0.015 74.483);
+    --sidebar-accent-foreground: oklch(0.319 0.038 53.204);
+    --sidebar-border: oklch(0.874 0.018 72.402);
+    --sidebar-ring: oklch(0.61 0.08 49.529);
 }
 
 .dark {
@@ -129,26 +129,55 @@
     }
 }
 
-.rw-marker-shell {
-  background: transparent;
-  border: 0;
-}
-
-.rw-marker {
-  display: block;
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
-  border: 3px solid color-mix(in oklab, var(--background) 78%, transparent);
-  background:
-    radial-gradient(circle at 35% 35%, rgba(255,255,255,0.85), rgba(255,255,255,0.2) 28%, transparent 30%),
-    linear-gradient(145deg, #d6b36a, #8f6427);
-  box-shadow: 0 8px 22px rgba(55, 35, 8, 0.28);
+.rw-google-pin {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid rgba(124, 89, 42, 0.4);
+  background: linear-gradient(180deg, rgba(255, 247, 233, 0.98), rgba(236, 220, 191, 0.98));
+  color: #4c3418;
+  padding: 7px 10px;
+  min-width: 74px;
+  box-shadow: 0 10px 30px rgba(66, 45, 20, 0.22);
   transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
-.rw-marker.is-active {
-  transform: scale(1.24);
-  border-color: #f8edd4;
-  box-shadow: 0 0 0 6px rgba(214, 179, 106, 0.22), 0 12px 28px rgba(55, 35, 8, 0.34);
+.rw-google-pin:hover {
+  transform: translateY(-1px);
+}
+
+.rw-google-pin.is-active {
+  border-color: rgba(140, 89, 24, 0.9);
+  box-shadow: 0 0 0 6px rgba(185, 137, 67, 0.18), 0 14px 34px rgba(66, 45, 20, 0.24);
+  transform: translateY(-1px) scale(1.03);
+}
+
+.rw-google-pin-price {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.rw-google-pin-code {
+  font-size: 0.66rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(76, 52, 24, 0.75);
+}
+
+.rw-google-placeholder-dot {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #dcb66f, #8f672f);
+}
+
+.rw-google-info {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #3f2b17;
 }
