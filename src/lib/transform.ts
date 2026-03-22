@@ -44,6 +44,7 @@ export type SearchJob = {
   status: string
   completedAt: string
   createdAt: string
+  updatedAt: string
   params: {
     city: string
     country: string

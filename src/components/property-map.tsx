@@ -1,16 +1,16 @@
-import { useEffect, useRef } from "react"
-import L from "leaflet"
-import marker2x from "leaflet/dist/images/marker-icon-2x.png"
-import marker from "leaflet/dist/images/marker-icon.png"
-import shadow from "leaflet/dist/images/marker-shadow.png"
+import { useEffect, useMemo, useRef, useState } from "react"
 
-import type { PropertySummary } from "@/lib/transform"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { type PropertySummary } from "@/lib/transform"
 
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: marker2x,
-  iconUrl: marker,
-  shadowUrl: shadow,
-})
+declare global {
+  interface Window {
+    mapkit?: any
+    __rwAppleMapsPromise?: Promise<any>
+    __rwAppleMapsInitialized?: boolean
+    __rwAppleMapsReady?: () => void
+  }
+}
 
 type PropertyMapProps = {
   properties: PropertySummary[]
@@ -18,92 +18,210 @@ type PropertyMapProps = {
   onSelect: (name: string) => void
 }
 
-export function PropertyMap({
-  properties,
-  selectedProperty,
-  onSelect,
-}: PropertyMapProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const layerRef = useRef<L.LayerGroup | null>(null)
-  const markersRef = useRef<Map<string, L.Marker>>(new Map())
-
-  function createMarkerIcon(active: boolean) {
-    return L.divIcon({
-      className: "rw-marker-shell",
-      html: `<span class="rw-marker${active ? " is-active" : ""}"></span>`,
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
-      popupAnchor: [0, -10],
-    })
+function loadAppleMapKit() {
+  if (window.mapkit) {
+    return Promise.resolve(window.mapkit)
   }
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+  if (window.__rwAppleMapsPromise) {
+    return window.__rwAppleMapsPromise
+  }
 
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      scrollWheelZoom: false,
-    }).setView([20, 0], 2)
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map)
-
-    mapRef.current = map
-    layerRef.current = L.layerGroup().addTo(map)
-  }, [])
-
-  useEffect(() => {
-    const map = mapRef.current
-    const layer = layerRef.current
-    if (!map || !layer) return
-
-    layer.clearLayers()
-    markersRef.current.clear()
-    const points = properties.filter(
-      (property) =>
-        typeof property.latitude === "number" && typeof property.longitude === "number"
-    )
-
-    for (const property of points) {
-      const isSelected = property.name === selectedProperty
-      const markerInstance = L.marker([property.latitude as number, property.longitude as number], {
-        icon: createMarkerIcon(isSelected),
-        zIndexOffset: isSelected ? 600 : 0,
-      })
-      markerInstance.bindPopup(
-        [
-          `<strong>${property.name}</strong>`,
-          property.bestCodeLabel ? `Best code: ${property.bestCodeLabel}` : "No winning code yet",
-          property.locationLabel || "",
-        ]
-          .filter(Boolean)
-          .join("<br>")
-      )
-      markerInstance.on("click", () => onSelect(property.name))
-      markerInstance.addTo(layer)
-      markersRef.current.set(property.name, markerInstance)
-    }
-
-    if (points.length) {
-      map.fitBounds(
-        L.latLngBounds(
-          points.map((property) => [property.latitude as number, property.longitude as number])
-        ).pad(0.18)
-      )
-    }
-
-    if (selectedProperty) {
-      const property = points.find((item) => item.name === selectedProperty)
-      if (property) {
-        const marker = markersRef.current.get(property.name)
-        marker?.openPopup()
-        map.panTo([property.latitude as number, property.longitude as number], { animate: true })
+  window.__rwAppleMapsPromise = new Promise((resolve, reject) => {
+    window.__rwAppleMapsReady = () => {
+      if (window.mapkit) {
+        resolve(window.mapkit)
+      } else {
+        reject(new Error("Apple Maps failed to initialize"))
       }
     }
-    window.setTimeout(() => map.invalidateSize(), 80)
-  }, [properties, selectedProperty, onSelect])
 
-  return <div className="min-h-[26rem] w-full rounded-xl border" ref={containerRef} />
+    const script = document.createElement("script")
+    script.src = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"
+    script.async = true
+    script.crossOrigin = "anonymous"
+    script.setAttribute("data-callback", "__rwAppleMapsReady")
+    script.onerror = () => reject(new Error("Apple Maps failed to load"))
+    document.head.appendChild(script)
+  })
+
+  return window.__rwAppleMapsPromise
+}
+
+async function initializeAppleMapKit() {
+  const mapkit = await loadAppleMapKit()
+
+  if (!window.__rwAppleMapsInitialized) {
+    mapkit.init({
+      authorizationCallback: async (done: (token: string) => void) => {
+        const response = await fetch("/api/apple-maps-token")
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok || !data.token) {
+          throw new Error(data.error || "Apple Maps token request failed")
+        }
+
+        done(data.token)
+      },
+    })
+    window.__rwAppleMapsInitialized = true
+  }
+
+  return mapkit
+}
+
+function glyphLabel(property: PropertySummary) {
+  if (property.bestPrice === null) return "—"
+
+  const rounded = Math.round(property.bestPrice)
+  if (rounded > 999) return "999+"
+  return String(rounded)
+}
+
+export function PropertyMap({ properties, selectedProperty, onSelect }: PropertyMapProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const mapRef = useRef<any>(null)
+  const annotationsRef = useRef<Map<string, any>>(new Map())
+  const fittedRef = useRef(false)
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading")
+
+  const points = useMemo(
+    () =>
+      properties.filter(
+        (property) =>
+          property.bestPrice !== null &&
+          typeof property.latitude === "number" &&
+          typeof property.longitude === "number"
+      ),
+    [properties]
+  )
+
+  useEffect(() => {
+    if (!points.length || !containerRef.current || mapRef.current) return
+
+    let cancelled = false
+
+    initializeAppleMapKit()
+      .then((mapkit) => {
+        if (cancelled || !containerRef.current) return
+
+        mapRef.current = new mapkit.Map(containerRef.current, {
+          showsCompass: mapkit.FeatureVisibility.Hidden,
+          showsMapTypeControl: false,
+          showsZoomControl: true,
+          isRotationEnabled: false,
+          isScrollEnabled: true,
+          showsPointsOfInterest: false,
+        })
+
+        if ("showsPointsOfInterest" in mapRef.current) {
+          mapRef.current.showsPointsOfInterest = false
+        }
+        if (mapkit.PointOfInterestFilter?.excludingAll) {
+          mapRef.current.pointOfInterestFilter = mapkit.PointOfInterestFilter.excludingAll
+        }
+
+        setState("ready")
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState("error")
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [points.length])
+
+  useEffect(() => {
+    if (state !== "ready" || !mapRef.current || !window.mapkit) return
+
+    const mapkit = window.mapkit
+    const map = mapRef.current
+    const existing = [...annotationsRef.current.values()]
+
+    if (existing.length) {
+      map.removeAnnotations(existing)
+      annotationsRef.current.clear()
+    }
+
+    const annotations = points.map((property) => {
+      const annotation = new mapkit.MarkerAnnotation(
+        new mapkit.Coordinate(property.latitude as number, property.longitude as number),
+        {
+          title: "",
+          subtitle: "",
+          color: property.name === selectedProperty ? "#b76419" : "#caa06a",
+          glyphText: glyphLabel(property),
+        }
+      )
+
+      if (typeof annotation.addEventListener === "function") {
+        annotation.addEventListener("select", () => onSelect(property.name))
+      }
+
+      annotationsRef.current.set(property.name, annotation)
+      return annotation
+    })
+
+    if (annotations.length) {
+      map.addAnnotations(annotations)
+      if (!fittedRef.current) {
+        map.showItems(annotations, {
+          animate: true,
+          padding: new mapkit.Padding(80, 56, 80, 56),
+        })
+        fittedRef.current = true
+      }
+    }
+  }, [onSelect, points, state])
+
+  useEffect(() => {
+    if (state !== "ready") return
+
+    for (const [name, annotation] of annotationsRef.current.entries()) {
+      annotation.color = name === selectedProperty ? "#b76419" : "#caa06a"
+      annotation.selected = name === selectedProperty
+    }
+  }, [selectedProperty, state])
+
+  if (state === "error") {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <span className="rw-google-placeholder-dot" />
+          </EmptyMedia>
+          <EmptyTitle>Apple Maps failed to load</EmptyTitle>
+          <EmptyDescription>The search results still work, but the Apple Maps view could not initialize in this session.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
+  if (!points.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <span className="rw-google-placeholder-dot" />
+          </EmptyMedia>
+          <EmptyTitle>Map waiting on priced properties</EmptyTitle>
+          <EmptyDescription>
+            The Apple map appears once the current search returns hotels with coordinates and a live rate.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="min-h-[32rem] overflow-hidden rounded-none border border-border/70" ref={containerRef} />
+      <p className="text-xs text-muted-foreground">
+        Apple Maps shows your hotel results as price-first pins. Selecting a pin or hotel card keeps the map and ranked list in sync.
+      </p>
+    </div>
+  )
 }

@@ -9,7 +9,7 @@ import {
   SparkleIcon,
 } from "@phosphor-icons/react"
 
-import { GooglePropertyMap } from "@/components/google-property-map"
+import { PropertyMap } from "@/components/property-map"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
@@ -62,6 +61,7 @@ import {
   type CatalogPreset,
   type SearchJob,
 } from "@/lib/transform"
+import { cn } from "@/lib/utils"
 import logo from "../logo.jpg"
 
 type BootstrapPayload = {
@@ -73,6 +73,8 @@ type ViewKey = "search" | "results" | "library" | "history"
 
 const defaultCheckIn = "2026-04-16"
 const defaultCheckOut = "2026-04-22"
+const searchPollDelayMs = 750
+const minimumSearchIndicatorMs = 1200
 
 async function apiFetch<T>(url: string, options?: RequestInit) {
   const response = await fetch(url, options)
@@ -102,6 +104,32 @@ function buildHistoryEntry(job: SearchJob): SearchHistoryEntry {
   }
 }
 
+function getPreviewRates(property: ReturnType<typeof summarizeProperties>[number]) {
+  const rankedAvailable = property.rates.filter((rate) => rate.available)
+  const baselineRate = property.rates.find((rate) => rate.code === "BASELINE")
+  const preview = [...rankedAvailable.slice(0, 3)]
+
+  if (baselineRate && !preview.some((rate) => rate.code === baselineRate.code)) {
+    preview.push(baselineRate)
+  }
+
+  if (!preview.length && baselineRate) {
+    preview.push(baselineRate)
+  }
+
+  return preview.slice(0, 4)
+}
+
+function getRateBadgeVariant(
+  property: ReturnType<typeof summarizeProperties>[number],
+  rate: ReturnType<typeof summarizeProperties>[number]["rates"][number]
+) {
+  if (!rate.available) return "ghost" as const
+  if (rate.code === property.bestCode) return "default" as const
+  if (rate.code === "BASELINE") return "outline" as const
+  return "secondary" as const
+}
+
 export default function App() {
   const [activeView, setActiveView] = useState<ViewKey>("search")
   const [city, setCity] = useState("Las Vegas")
@@ -117,6 +145,7 @@ export default function App() {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null)
   const [job, setJob] = useState<SearchJob | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [showSearchActivity, setShowSearchActivity] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [codeSearch, setCodeSearch] = useState("")
   const [newCode, setNewCode] = useState("")
@@ -179,6 +208,7 @@ export default function App() {
   const selectedPropertySummary = selectedProperty
     ? properties.find((property) => property.name === selectedProperty) || null
     : null
+  const visibleSearchCodes = (job?.params.codes.filter((code) => code !== "BASELINE") || selectedCodes)
 
   useEffect(() => {
     if (!selectedProperty) return
@@ -219,11 +249,12 @@ export default function App() {
   }
 
   async function runSearch(codesOverride?: string[]) {
+    const startedAt = Date.now()
     setIsSearching(true)
     setError(null)
 
     try {
-      const nextJob = await apiFetch<SearchJob>("/api/search-jobs", {
+      const queuedJob = await apiFetch<SearchJob>("/api/search-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -236,39 +267,75 @@ export default function App() {
       })
 
       startTransition(() => {
+        setJob(queuedJob)
+        setSelectedProperty(null)
+        setShowSearchActivity(true)
+        setActiveView("results")
+      })
+
+      const nextJob =
+        queuedJob.status === "completed"
+          ? queuedJob
+          : await pollSearchJob(queuedJob.id)
+      const nextProperties = summarizeProperties(nextJob.results)
+      const firstProperty = nextProperties[0]?.name || null
+      const nextHistory = [buildHistoryEntry(nextJob), ...history.filter((entry) => entry.id !== nextJob.id)].slice(0, 10)
+
+      startTransition(() => {
         setJob(nextJob)
-        const nextProperties = summarizeProperties(nextJob.results)
-        const firstProperty = nextProperties[0]?.name || null
-        const nextHistory = [buildHistoryEntry(nextJob), ...history.filter((entry) => entry.id !== nextJob.id)].slice(0, 10)
         setHistory(nextHistory)
         saveHistory(nextHistory)
         setSelectedProperty(firstProperty)
         saveSelectedProperty(firstProperty)
-        setActiveView("results")
+        setShowSearchActivity(false)
       })
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Search failed")
     } finally {
+      const elapsed = Date.now() - startedAt
+      if (elapsed < minimumSearchIndicatorMs) {
+        await new Promise((resolve) => window.setTimeout(resolve, minimumSearchIndicatorMs - elapsed))
+      }
       setIsSearching(false)
     }
   }
 
   async function handleRetryFailed() {
     if (!job?.failedCodes.length) return
+    const startedAt = Date.now()
     setIsSearching(true)
     setError(null)
 
     try {
-      const retried = await apiFetch<SearchJob>(`/api/search-jobs/${job.id}/retry-failed`, {
+      const queuedRetry = await apiFetch<SearchJob>(`/api/search-jobs/${job.id}/retry-failed`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          params: {
+            ...job.params,
+            codes: job.failedCodes,
+          },
+          baseResults: job.results.filter((result) => result.success || result.error === "NO_RESULTS"),
+        }),
       })
 
       startTransition(() => {
+        setJob(queuedRetry)
+        setShowSearchActivity(true)
+      })
+
+      const retried =
+        queuedRetry.status === "completed"
+          ? queuedRetry
+          : await pollSearchJob(queuedRetry.id)
+      const nextProperties = summarizeProperties(retried.results)
+      const nextHistory = [buildHistoryEntry(retried), ...history.filter((entry) => entry.id !== retried.id)].slice(0, 10)
+
+      startTransition(() => {
         setJob(retried)
-        const nextProperties = summarizeProperties(retried.results)
-        const nextHistory = [buildHistoryEntry(retried), ...history.filter((entry) => entry.id !== retried.id)].slice(0, 10)
         setHistory(nextHistory)
         saveHistory(nextHistory)
+        setShowSearchActivity(false)
         if (!selectedProperty && nextProperties[0]?.name) {
           setSelectedProperty(nextProperties[0].name)
           saveSelectedProperty(nextProperties[0].name)
@@ -277,7 +344,28 @@ export default function App() {
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Retry failed")
     } finally {
+      const elapsed = Date.now() - startedAt
+      if (elapsed < minimumSearchIndicatorMs) {
+        await new Promise((resolve) => window.setTimeout(resolve, minimumSearchIndicatorMs - elapsed))
+      }
       setIsSearching(false)
+    }
+  }
+
+  async function pollSearchJob(jobId: string) {
+    while (true) {
+      const nextJob = await apiFetch<SearchJob>(`/api/search-jobs/${jobId}`)
+      setJob(nextJob)
+
+      if (nextJob.status === "completed") {
+        return nextJob
+      }
+
+      if (nextJob.status === "failed") {
+        throw new Error(nextJob.error || "Search failed")
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, searchPollDelayMs))
     }
   }
 
@@ -352,245 +440,221 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(248,239,224,0.92),_rgba(236,227,213,0.98)_38%,_rgba(230,220,204,1)_100%)] text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-6 px-4 py-5 md:px-6 md:py-7">
-        <header className="flex flex-col gap-4 rounded-none border border-border/70 bg-background/72 p-4 shadow-[0_20px_60px_rgba(69,46,23,0.08)] backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-4 border border-border/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(252,249,244,0.94))] p-4 shadow-[0_20px_60px_rgba(69,46,23,0.08)] md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <img alt="Ritz-Weaselton" className="size-14 rounded-none object-cover ring-1 ring-border/80" src={logo} />
+            <img
+              alt="Ritz-Weaselton"
+              className="h-22 w-auto shrink-0 object-contain mix-blend-multiply saturate-75 contrast-105"
+              src={logo}
+            />
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.36em] text-muted-foreground">Hosted Prototype</p>
               <h1 className="font-heading text-2xl tracking-tight">Ritz-Weaselton</h1>
-              <p className="text-sm text-muted-foreground">Server-side Marriott corp-code comparison with a simpler search-first flow.</p>
             </div>
           </div>
 
           <nav className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => setActiveView("search")} variant={activeView === "search" ? "default" : "outline"}>
+            <Button
+              className="h-11 rounded-xl px-5 text-base"
+              onClick={() => setActiveView("search")}
+              variant={activeView === "search" ? "default" : "outline"}
+            >
               Search
             </Button>
             <Button
+              className="h-11 rounded-xl px-5 text-base"
               disabled={!job}
               onClick={() => setActiveView("results")}
               variant={activeView === "results" ? "default" : "outline"}
             >
               Results
             </Button>
-            <Button onClick={() => setActiveView("library")} variant={activeView === "library" ? "default" : "outline"}>
-              Library
+            <Button
+              className="h-11 rounded-xl px-5 text-base"
+              onClick={() => setActiveView("library")}
+              variant={activeView === "library" ? "default" : "outline"}
+            >
+              Settings
             </Button>
-            <Button onClick={() => setActiveView("history")} variant={activeView === "history" ? "default" : "outline"}>
+            <Button
+              className="h-11 rounded-xl px-5 text-base"
+              onClick={() => setActiveView("history")}
+              variant={activeView === "history" ? "default" : "outline"}
+            >
               History
             </Button>
           </nav>
         </header>
 
         {activeView === "search" ? (
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <Card className="border-border/70 bg-background/86 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
-              <CardHeader className="gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">Warm Luxury</Badge>
+          <div className="flex flex-1 items-center justify-center py-6 md:py-10">
+            <div className="grid w-full max-w-5xl gap-6">
+              <div className="mx-auto grid w-full max-w-3xl gap-4 text-center">
+                <div className="flex justify-center gap-2">
+                  <Badge variant="secondary">Live Marriott pricing</Badge>
+                  <Badge variant="secondary">Server-side compare</Badge>
                   <Badge variant="secondary">Preset-first</Badge>
-                  <Badge variant="secondary">Google Maps-ready</Badge>
                 </div>
-                <CardTitle className="font-heading text-4xl leading-tight">Search first. Compare details after.</CardTitle>
-                <CardDescription className="max-w-2xl text-base text-muted-foreground">
-                  Start with destination, dates, and a code preset. Once the run completes, the results screen will rank properties by the best winning deal and show a coordinated map.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6">
-                <form className="grid gap-6" onSubmit={handleSearchSubmit}>
-                  <FieldGroup>
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <Field>
-                        <FieldLabel htmlFor="city">Location</FieldLabel>
-                        <FieldContent>
-                          <Input id="city" onChange={(event) => setCity(event.target.value)} value={city} />
-                          <FieldDescription>City or destination Marriott can resolve.</FieldDescription>
-                        </FieldContent>
-                      </Field>
+                <h2 className="font-heading text-5xl leading-[0.95] tracking-tight text-foreground md:text-6xl">
+                  Search smarter.
+                </h2>
+                <p className="mx-auto max-w-2xl text-base text-muted-foreground md:text-lg">
+                  Enter a destination, set your dates, choose the codes you want, and let the results view handle the heavier detail.
+                </p>
+              </div>
 
-                      <Field>
-                        <FieldLabel htmlFor="country">Country</FieldLabel>
-                        <FieldContent>
-                          <Input
-                            id="country"
-                            maxLength={2}
-                            onChange={(event) => setCountry(event.target.value.toUpperCase())}
-                            value={country}
-                          />
-                          <FieldDescription>Two-letter country code, like `US` or `AU`.</FieldDescription>
-                        </FieldContent>
-                      </Field>
+              <Card className="mx-auto w-full max-w-4xl border-border/70 bg-background shadow-[0_28px_80px_rgba(69,46,23,0.11)]">
+                <CardContent className="grid gap-6 px-5 py-5 md:px-6 md:py-6">
+                  <form className="grid gap-6" onSubmit={handleSearchSubmit}>
+                    <FieldGroup>
+                      <div className="grid gap-4 md:grid-cols-[1.6fr_0.6fr]">
+                        <Field>
+                          <FieldLabel htmlFor="city">Where are you staying?</FieldLabel>
+                          <FieldContent>
+                            <Input
+                              className="h-13 text-base md:text-lg"
+                              id="city"
+                              onChange={(event) => setCity(event.target.value)}
+                              placeholder="Las Vegas"
+                              value={city}
+                            />
+                          </FieldContent>
+                        </Field>
 
-                      <Field>
-                        <FieldLabel htmlFor="checkIn">Check-in</FieldLabel>
-                        <FieldContent>
-                          <Input id="checkIn" onChange={(event) => setCheckIn(event.target.value)} type="date" value={checkIn} />
-                        </FieldContent>
-                      </Field>
+                        <Field>
+                          <FieldLabel htmlFor="country">Country</FieldLabel>
+                          <FieldContent>
+                            <Input
+                              className="h-13 text-base md:text-lg"
+                              id="country"
+                              maxLength={2}
+                              onChange={(event) => setCountry(event.target.value.toUpperCase())}
+                              placeholder="US"
+                              value={country}
+                            />
+                          </FieldContent>
+                        </Field>
+                      </div>
+                    </FieldGroup>
 
-                      <Field>
-                        <FieldLabel htmlFor="checkOut">Check-out</FieldLabel>
-                        <FieldContent>
-                          <Input id="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
-                        </FieldContent>
-                      </Field>
-                    </div>
-                  </FieldGroup>
+                    <FieldGroup>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor="checkIn">Check-in</FieldLabel>
+                          <FieldContent>
+                            <Input className="h-13 text-base" id="checkIn" onChange={(event) => setCheckIn(event.target.value)} type="date" value={checkIn} />
+                          </FieldContent>
+                        </Field>
 
-                  <FieldSet>
-                    <FieldLegend>Code selection</FieldLegend>
-                    <FieldDescription>Use a preset to keep the home screen simple, then refine in the advanced selector if needed.</FieldDescription>
-                    <ToggleGroup
-                      className="flex w-full flex-wrap gap-2"
-                      onValueChange={(value) => {
-                        const preset = presets.find((item) => item.id === value)
-                        if (preset) handlePresetApply(preset)
-                      }}
-                      type="single"
-                      value={selectedPresetId}
-                      variant="outline"
-                    >
-                      {topPresets.map((preset) => (
-                        <ToggleGroupItem key={preset.id} value={preset.id}>
-                          {preset.name}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge>STD</Badge>
-                      <Badge variant="secondary">{selectedCodes.length} codes selected</Badge>
-                      {selectedCodes.slice(0, 6).map((code) => (
-                        <Badge key={code} variant="secondary">{codeLabel(code)}</Badge>
-                      ))}
-                      {selectedCodes.length > 6 ? <Badge variant="secondary">+{selectedCodes.length - 6} more</Badge> : null}
-                    </div>
-                  </FieldSet>
+                        <Field>
+                          <FieldLabel htmlFor="checkOut">Check-out</FieldLabel>
+                          <FieldContent>
+                            <Input className="h-13 text-base" id="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
+                          </FieldContent>
+                        </Field>
+                      </div>
+                    </FieldGroup>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Button disabled={isSearching} type="submit">
-                      <MagnifyingGlassIcon data-icon="inline-start" />
-                      {isSearching ? "Searching live" : "Run live comparison"}
-                    </Button>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button type="button" variant="outline">
-                          <SlidersHorizontalIcon data-icon="inline-start" />
-                          Advanced code selector
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent className="sm:max-w-2xl">
-                        <SheetHeader>
-                          <SheetTitle>Code selector</SheetTitle>
-                          <SheetDescription>Search, favorite, and selectively enable the codes you want on this run.</SheetDescription>
-                        </SheetHeader>
-                        <div className="grid gap-4 pt-4">
-                          <Input onChange={(event) => setCodeSearch(event.target.value)} placeholder="Filter by code or company" value={codeSearch} />
-                          <div className="flex flex-wrap gap-2">
-                            <Button onClick={() => updateSelected(codes.map((code) => code.code))} type="button" variant="outline">
-                              Use all codes
-                            </Button>
-                            <Button onClick={() => updateSelected(codes.filter((code) => code.recommended).map((code) => code.code))} type="button" variant="outline">
-                              Recommended only
-                            </Button>
-                          </div>
-                          <ScrollArea className="h-[30rem] pr-3">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="w-14">Use</TableHead>
-                                  <TableHead>Code</TableHead>
-                                  <TableHead>Company</TableHead>
-                                  <TableHead>Signals</TableHead>
-                                  <TableHead className="w-28">Favorite</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filteredCodes.map((code) => (
-                                  <TableRow key={code.code}>
-                                    <TableCell>
-                                      <Checkbox
-                                        checked={selectedCodes.includes(code.code)}
-                                        onCheckedChange={(checked) => toggleCodeSelection(code.code, Boolean(checked))}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="font-medium">{code.code}</TableCell>
-                                    <TableCell>{code.company}</TableCell>
-                                    <TableCell>
-                                      <div className="flex flex-wrap gap-2">
-                                        {code.recommended ? <Badge variant="secondary">Recommended</Badge> : null}
-                                        {code.custom ? <Badge variant="secondary">Custom</Badge> : null}
-                                        {favoriteCodes.includes(code.code) ? <Badge>Favorite</Badge> : null}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Button onClick={() => toggleFavorite(code.code)} size="sm" variant="outline">
-                                        {favoriteCodes.includes(code.code) ? "Saved" : "Save"}
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </ScrollArea>
+                    <FieldSet className="grid gap-4 rounded-xl border border-border/70 bg-muted/20 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="grid gap-1">
+                          <FieldLegend>Codes</FieldLegend>
+                          <FieldDescription>Pick a preset here. Manage the full code library in Settings.</FieldDescription>
                         </div>
-                      </SheetContent>
-                    </Sheet>
-                  </div>
-                  {error ? <p className="text-sm text-destructive">{error}</p> : null}
-                </form>
-              </CardContent>
-            </Card>
+                        <Button
+                          className="rounded-xl"
+                          onClick={() => setActiveView("library")}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <SlidersHorizontalIcon data-icon="inline-start" />
+                          Open settings
+                        </Button>
+                      </div>
+                      <ToggleGroup
+                        className="flex w-full flex-wrap gap-2"
+                        onValueChange={(value) => {
+                          const preset = presets.find((item) => item.id === value)
+                          if (preset) handlePresetApply(preset)
+                        }}
+                        type="single"
+                        value={selectedPresetId}
+                        variant="outline"
+                      >
+                        {topPresets.map((preset) => (
+                          <ToggleGroupItem key={preset.id} value={preset.id}>
+                            {preset.name}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/75 px-3 py-3">
+                        <Badge>{selectedPresetId ? presets.find((preset) => preset.id === selectedPresetId)?.name || "Preset" : "Custom"}</Badge>
+                        <Badge variant="secondary">{selectedCodes.length} codes selected</Badge>
+                        {selectedCodes.slice(0, 4).map((code) => (
+                          <Badge key={code} variant="secondary">{codeLabel(code)}</Badge>
+                        ))}
+                        {selectedCodes.length > 4 ? <Badge variant="secondary">+{selectedCodes.length - 4} more</Badge> : null}
+                      </div>
+                    </FieldSet>
 
-            <div className="grid gap-6">
-              <Card className="border-border/70 bg-background/78 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
-                <CardHeader>
-                  <CardDescription>What happens after search</CardDescription>
-                  <CardTitle>Results become the detail view</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="rounded-none border border-border/70 bg-muted/35 p-4">
-                    <p className="text-sm text-muted-foreground">Ranked list</p>
-                    <p className="font-heading text-lg">Best code, best price, baseline, and savings at a glance.</p>
-                  </div>
-                  <div className="rounded-none border border-border/70 bg-muted/35 p-4">
-                    <p className="text-sm text-muted-foreground">Google map</p>
-                    <p className="font-heading text-lg">Price-first markers linked directly to the matching hotel card.</p>
-                  </div>
-                  <div className="rounded-none border border-border/70 bg-muted/35 p-4">
-                    <p className="text-sm text-muted-foreground">Deeper compare</p>
-                    <p className="font-heading text-lg">The per-code table stays available, but it’s no longer the first thing you see.</p>
-                  </div>
+                    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+                      <Button className="h-13 px-5 text-base md:min-w-64" disabled={isSearching} type="submit">
+                        <MagnifyingGlassIcon data-icon="inline-start" />
+                        {isSearching ? "Searching live" : "Run live comparison"}
+                      </Button>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Need custom codes or favorites?</span>
+                        <Button
+                          className="rounded-xl px-3"
+                          onClick={() => setActiveView("library")}
+                          type="button"
+                          variant="ghost"
+                        >
+                          Settings
+                        </Button>
+                      </div>
+                    </div>
+                    {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                  </form>
                 </CardContent>
               </Card>
 
-              <Card className="border-border/70 bg-background/78 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
-                <CardHeader>
-                  <CardDescription>Recent searches</CardDescription>
-                  <CardTitle>Browser-local history</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-3">
+              <div className="mx-auto grid w-full max-w-4xl gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">Recent searches</p>
                   {history.length ? (
-                    history.slice(0, 3).map((entry) => (
-                      <Button key={entry.id} className="h-auto justify-start py-3 text-left" onClick={() => handleRestoreHistory(entry)} variant="outline">
-                        <div className="flex flex-col gap-1">
+                    <Button onClick={() => setActiveView("history")} size="sm" variant="ghost">
+                      View all
+                    </Button>
+                  ) : null}
+                </div>
+                {history.length ? (
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {history.slice(0, 3).map((entry) => (
+                      <Button
+                        key={entry.id}
+                        className="h-auto justify-start rounded-xl border-border/70 bg-background/88 px-4 py-4 text-left shadow-[0_12px_30px_rgba(69,46,23,0.06)]"
+                        onClick={() => handleRestoreHistory(entry)}
+                        variant="outline"
+                      >
+                        <div className="flex flex-col gap-1.5">
                           <span className="font-medium">{entry.destination}</span>
-                          <span className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)} • {entry.propertyCount} properties • {entry.codes.length} codes</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(entry.createdAt)} • {entry.propertyCount} properties • {entry.codes.length} codes
+                          </span>
                         </div>
                       </Button>
-                    ))
-                  ) : (
-                    <Empty>
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <ClockCounterClockwiseIcon />
-                        </EmptyMedia>
-                        <EmptyTitle>No saved searches yet</EmptyTitle>
-                        <EmptyDescription>Your recent runs will appear here after the first search.</EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  )}
-                </CardContent>
-              </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed border-border/70 bg-background/70">
+                    <CardContent className="px-5 py-5">
+                      <p className="text-sm text-muted-foreground">
+                        Your recent runs will show up here after the first search.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
@@ -622,25 +686,62 @@ export default function App() {
               </CardHeader>
               <CardContent>
                 {job ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card size="sm">
-                      <CardHeader>
-                        <CardDescription>Best savings</CardDescription>
-                        <CardTitle>{properties[0] ? formatCurrency(properties[0].savings, properties[0].currency) : "Waiting"}</CardTitle>
-                      </CardHeader>
-                    </Card>
-                    <Card size="sm">
-                      <CardHeader>
-                        <CardDescription>Top winner</CardDescription>
-                        <CardTitle>{properties.find((property) => property.bestCode && property.bestCode !== "BASELINE")?.bestCodeLabel || "STD"}</CardTitle>
-                      </CardHeader>
-                    </Card>
-                    <Card size="sm">
-                      <CardHeader>
-                        <CardDescription>Completed</CardDescription>
-                        <CardTitle>{formatDateTime(job.completedAt)}</CardTitle>
-                      </CardHeader>
-                    </Card>
+                  <div className="grid gap-4">
+                    {isSearching ? (
+                      <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/25 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="grid gap-1">
+                            <p className="text-sm font-medium text-foreground">Searching Marriott live</p>
+                            <p className="text-sm text-muted-foreground">
+                              Checking {visibleSearchCodes.length} corp codes for {city}, {country}.
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => setShowSearchActivity((value) => !value)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            {showSearchActivity ? "Hide activity" : "Show activity"}
+                          </Button>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-border/70">
+                          <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+                        </div>
+                        {showSearchActivity ? (
+                          <ScrollArea className="h-28 rounded-xl border border-border/70 bg-background/80">
+                            <div className="flex flex-wrap gap-2 p-3">
+                              {visibleSearchCodes.map((code) => (
+                                <Badge key={code} variant="secondary">
+                                  {codeLabel(code)}
+                                </Badge>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <Card className="bg-background/92" size="sm">
+                        <CardHeader>
+                          <CardDescription>Best savings</CardDescription>
+                          <CardTitle>{properties[0] ? formatCurrency(properties[0].savings, properties[0].currency) : "Waiting"}</CardTitle>
+                        </CardHeader>
+                      </Card>
+                      <Card className="bg-background/92" size="sm">
+                        <CardHeader>
+                          <CardDescription>Top winner</CardDescription>
+                          <CardTitle>{properties.find((property) => property.bestCode && property.bestCode !== "BASELINE")?.bestCodeLabel || "STD"}</CardTitle>
+                        </CardHeader>
+                      </Card>
+                      <Card className="bg-background/92" size="sm">
+                        <CardHeader>
+                          <CardDescription>{isSearching ? "Last update" : "Completed"}</CardDescription>
+                          <CardTitle>{formatDateTime(job.completedAt || job.updatedAt)}</CardTitle>
+                        </CardHeader>
+                      </Card>
+                    </div>
                   </div>
                 ) : (
                   <Empty className="border">
@@ -659,6 +760,48 @@ export default function App() {
               </CardContent>
             </Card>
 
+            {selectedPropertySummary ? (
+              <Card className="border-primary/30 bg-background/88 shadow-[0_20px_60px_rgba(69,46,23,0.08)]">
+                <CardContent className="grid gap-4 px-5 py-5 md:grid-cols-[1.1fr_0.9fr] md:px-6">
+                  <div className="grid gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge>Selected property</Badge>
+                      <Badge variant="secondary">{selectedPropertySummary.bestCodeLabel || "No rate"}</Badge>
+                      {selectedPropertySummary.distance ? (
+                        <Badge variant="secondary">{selectedPropertySummary.distance}</Badge>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-1">
+                      <h3 className="font-heading text-3xl leading-tight">{selectedPropertySummary.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedPropertySummary.description || "Live Marriott property result."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Best</p>
+                      <p className="font-heading text-2xl">
+                        {formatCurrency(selectedPropertySummary.bestPrice, selectedPropertySummary.currency)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Baseline</p>
+                      <p className="font-heading text-2xl">
+                        {formatCurrency(selectedPropertySummary.baselinePrice, selectedPropertySummary.currency)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Savings</p>
+                      <p className="font-heading text-2xl">
+                        {formatCurrency(selectedPropertySummary.savings, selectedPropertySummary.currency)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
             <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
               <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
                 <CardHeader>
@@ -667,8 +810,8 @@ export default function App() {
                 </CardHeader>
                 <CardContent>
                   {properties.length ? (
-                    <ScrollArea className="h-[70vh] pr-3">
-                      <div className="flex flex-col gap-4">
+                    <div className="pr-3">
+                      <div className="flex flex-col gap-4 pb-4">
                         {properties.map((property, index) => (
                           <div
                             key={property.name}
@@ -677,42 +820,83 @@ export default function App() {
                             }}
                           >
                             <Card
-                              className={selectedProperty === property.name ? "cursor-pointer border-primary bg-primary/5 shadow-lg ring-2 ring-primary" : "cursor-pointer transition-shadow hover:shadow-md"}
+                              className={cn(
+                                "cursor-pointer border-border/70 bg-background/94 transition-all hover:shadow-md",
+                                selectedProperty === property.name &&
+                                  "border-primary/60 bg-primary/4 shadow-[0_16px_34px_rgba(69,46,23,0.12)] ring-1 ring-primary/50"
+                              )}
                               onClick={() => focusProperty(property.name)}
                               size="sm"
                             >
-                              <CardHeader className="gap-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Badge variant="secondary">#{index + 1}</Badge>
-                                  <Badge>{property.bestCodeLabel || "No rate"}</Badge>
-                                  <Badge variant="secondary">{property.availableCodes} priced codes</Badge>
-                                  {property.distance ? <Badge variant="secondary">{property.distance}</Badge> : null}
+                              <CardHeader className="gap-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="secondary">#{index + 1}</Badge>
+                                    <Badge>{property.bestCodeLabel || "No rate"}</Badge>
+                                    <Badge variant="secondary">{property.availableCodes} priced codes</Badge>
+                                    {property.distance ? <Badge variant="secondary">{property.distance}</Badge> : null}
+                                  </div>
+                                  {selectedProperty === property.name ? <Badge>Selected</Badge> : null}
                                 </div>
-                                <CardTitle className="font-heading text-2xl">{property.name}</CardTitle>
-                                <CardDescription>{property.description || "Live Marriott property result."}</CardDescription>
+                                <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr] md:items-start">
+                                  <div className="grid gap-3">
+                                    <div className="grid gap-3 sm:grid-cols-[140px_1fr] sm:items-start">
+                                      <div className="overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                                        {property.imageUrl ? (
+                                          <img
+                                            alt={property.name}
+                                            className="h-28 w-full object-cover sm:h-24"
+                                            loading="lazy"
+                                            src={property.imageUrl}
+                                          />
+                                        ) : (
+                                          <div className="flex h-28 items-center justify-center bg-muted/30 text-xs uppercase tracking-[0.24em] text-muted-foreground sm:h-24">
+                                            {property.brandName || "Property"}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <CardTitle className="font-heading text-2xl">{property.name}</CardTitle>
+                                        {property.brandName ? (
+                                          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                                            {property.brandName}
+                                          </p>
+                                        ) : null}
+                                        <CardDescription>{property.description || "Live Marriott property result."}</CardDescription>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-2 rounded-xl border border-border/60 bg-muted/20 p-3">
+                                    <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Best live deal</p>
+                                    <div className="flex items-end justify-between gap-3">
+                                      <p className="font-heading text-3xl leading-none">
+                                        {formatCurrency(property.bestPrice, property.currency)}
+                                      </p>
+                                      <div className="text-right text-sm text-muted-foreground">
+                                        <p>vs {formatCurrency(property.baselinePrice, property.currency)}</p>
+                                        <p className="font-medium text-foreground">
+                                          {formatCurrency(property.savings, property.currency)} savings
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               </CardHeader>
                               <CardContent className="grid gap-4">
-                                <div className="grid gap-4 md:grid-cols-3">
-                                  <div>
-                                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Best price</p>
-                                    <p className="font-heading text-2xl">{formatCurrency(property.bestPrice, property.currency)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Baseline</p>
-                                    <p className="font-heading text-2xl">{formatCurrency(property.baselinePrice, property.currency)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Savings</p>
-                                    <p className="font-heading text-2xl">{formatCurrency(property.savings, property.currency)}</p>
-                                  </div>
-                                </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {property.rates.slice(0, 5).map((rate) => (
-                                    <Badge key={`${property.name}-${rate.code}`} variant="secondary">
+                                  {getPreviewRates(property).map((rate) => (
+                                    <Badge
+                                      key={`${property.name}-${rate.code}`}
+                                      variant={getRateBadgeVariant(property, rate)}
+                                    >
                                       {rate.label}: {rate.available ? formatCurrency(rate.price, rate.currency) : "No rate"}
                                     </Badge>
                                   ))}
+                                  {property.rates.length > getPreviewRates(property).length ? (
+                                    <Badge variant="secondary">+{property.rates.length - getPreviewRates(property).length} more codes</Badge>
+                                  ) : null}
                                 </div>
+                                <Separator />
                                 <div className="flex flex-wrap gap-3">
                                   {property.bookingUrl ? (
                                     <Button asChild>
@@ -721,12 +905,15 @@ export default function App() {
                                       </a>
                                     </Button>
                                   ) : null}
-                                  <Button onClick={(event) => {
-                                    event.stopPropagation()
-                                    focusProperty(property.name)
-                                  }} variant="outline">
+                                  <Button
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      focusProperty(property.name)
+                                    }}
+                                    variant={selectedProperty === property.name ? "default" : "outline"}
+                                  >
                                     <MapPinIcon data-icon="inline-start" />
-                                    Highlight on map
+                                    {selectedProperty === property.name ? "Selected on map" : "Show on map"}
                                   </Button>
                                 </div>
                               </CardContent>
@@ -734,7 +921,7 @@ export default function App() {
                           </div>
                         ))}
                       </div>
-                    </ScrollArea>
+                    </div>
                   ) : (
                     <Empty className="border">
                       <EmptyHeader>
@@ -749,14 +936,14 @@ export default function App() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-6">
+              <div className="grid gap-6 xl:sticky xl:top-5 xl:self-start">
                 <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
                   <CardHeader>
-                    <CardDescription>Google map</CardDescription>
-                    <CardTitle>Price-first markers</CardTitle>
+                    <CardDescription>Apple Maps</CardDescription>
+                    <CardTitle>Price-first pins</CardTitle>
                   </CardHeader>
                   <CardContent className="grid gap-4">
-                    <GooglePropertyMap
+                    <PropertyMap
                       onSelect={focusProperty}
                       properties={properties}
                       selectedProperty={selectedProperty}
@@ -764,13 +951,19 @@ export default function App() {
                     {selectedPropertySummary ? (
                       <div className="rounded-none border border-border/70 bg-muted/35 p-4">
                         <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Selected property</p>
-                        <div className="mt-2 flex flex-col gap-2">
-                          <h3 className="font-heading text-xl">{selectedPropertySummary.name}</h3>
-                          <div className="flex flex-wrap gap-2">
-                            <Badge>{selectedPropertySummary.bestCodeLabel || "No rate"}</Badge>
-                            <Badge variant="secondary">{formatCurrency(selectedPropertySummary.bestPrice, selectedPropertySummary.currency)}</Badge>
-                            <Badge variant="secondary">{formatCurrency(selectedPropertySummary.savings, selectedPropertySummary.currency)} savings</Badge>
+                        <div className="mt-2 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                          <div className="grid gap-2">
+                            <h3 className="font-heading text-xl">{selectedPropertySummary.name}</h3>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge>{selectedPropertySummary.bestCodeLabel || "No rate"}</Badge>
+                              <Badge variant="secondary">{formatCurrency(selectedPropertySummary.bestPrice, selectedPropertySummary.currency)}</Badge>
+                              <Badge variant="secondary">{formatCurrency(selectedPropertySummary.savings, selectedPropertySummary.currency)} savings</Badge>
+                            </div>
                           </div>
+                          <Button onClick={() => focusProperty(selectedPropertySummary.name)} variant="outline">
+                            <MapPinIcon data-icon="inline-start" />
+                            Focus in list
+                          </Button>
                         </div>
                       </div>
                     ) : null}
@@ -826,11 +1019,11 @@ export default function App() {
         ) : null}
 
         {activeView === "library" ? (
-          <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <div className="grid items-start gap-6 xl:grid-cols-[0.8fr_1.2fr]">
             <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
               <CardHeader>
                 <CardDescription>Presets and personal codes</CardDescription>
-                <CardTitle>Curate your library</CardTitle>
+                <CardTitle>Settings</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6">
                 <form className="grid gap-3" onSubmit={handleSavePreset}>
@@ -865,12 +1058,12 @@ export default function App() {
 
             <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
               <CardHeader>
-                <CardDescription>Code library</CardDescription>
+                <CardDescription>Full code catalog</CardDescription>
                 <CardTitle>Search, favorite, and manage the full code list</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
                 <Input onChange={(event) => setCodeSearch(event.target.value)} placeholder="Filter by code or company" value={codeSearch} />
-                <ScrollArea className="h-[60vh] pr-3">
+                <div className="overflow-x-auto rounded-xl border border-border/60 bg-background/70">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -908,7 +1101,7 @@ export default function App() {
                       ))}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </div>

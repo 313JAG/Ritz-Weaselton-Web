@@ -4,10 +4,13 @@ const http = require('node:http');
 const { URL } = require('node:url');
 
 const ROOT = __dirname;
+loadLocalEnv();
+
 const STATIC_ROOT = fs.existsSync(path.join(ROOT, 'dist')) ? path.join(ROOT, 'dist') : ROOT;
 const PORT = Number(process.env.PORT || 3001);
 
 const routes = {
+  '/api/apple-maps-token': require('./api/apple-maps-token'),
   '/api/bootstrap': require('./api/bootstrap'),
   '/api/search-jobs': require('./api/search-jobs'),
 };
@@ -36,6 +39,27 @@ const MIME_TYPES = {
 };
 
 const LEGACY_PATHS = new Set(['/settings', '/settings.html', '/logos.html']);
+
+function loadLocalEnv() {
+  const envPath = path.join(ROOT, '.env');
+  if (!fs.existsSync(envPath)) return;
+
+  const source = fs.readFileSync(envPath, 'utf8');
+  for (const line of source.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const separatorIndex = trimmed.indexOf('=');
+    if (separatorIndex === -1) continue;
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^['"]|['"]$/g, '');
+
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
 
 function resolveStaticPath(pathname) {
   const cleanPath = pathname === '/' ? '/index.html' : pathname;
