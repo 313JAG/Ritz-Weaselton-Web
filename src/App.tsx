@@ -3,8 +3,11 @@ import {
   ArrowClockwiseIcon,
   BookOpenTextIcon,
   ClockCounterClockwiseIcon,
+  CompassIcon,
+  HouseIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
+  MapTrifoldIcon,
   SlidersHorizontalIcon,
   SparkleIcon,
 } from "@phosphor-icons/react"
@@ -475,85 +478,58 @@ export default function App() {
 
   return (
     <div className="rw-app-shell min-h-screen text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-6 px-4 py-5 md:px-6 md:py-7">
-        <header className="rw-topbar flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <img
-              alt="Ritz-Weaselton"
-              className="h-16 w-auto shrink-0 object-contain brightness-0 invert"
-              src={logo}
-            />
-            <div className="min-w-0">
-              <h1 className="font-heading text-2xl tracking-tight">Ritz-Weaselton</h1>
-            </div>
-          </div>
-
-          <nav className="flex flex-wrap items-center gap-2">
-            <Button
-              className="h-11 rounded-xl px-5 text-base"
-              onClick={() => setActiveView("search")}
-              variant={activeView === "search" ? "default" : "outline"}
-            >
-              Search
+      <div className="rw-workspace mx-auto grid min-h-screen w-full max-w-[1680px] lg:grid-cols-[250px_minmax(0,1fr)]">
+        <aside className="rw-rail">
+          <button className="rw-brand" onClick={() => setActiveView("search")} type="button">
+            <img alt="Ritz-Weaselton" className="h-14 w-auto object-contain" src={logo} />
+            <span>Rate intelligence<br />for better stays.</span>
+          </button>
+          <nav aria-label="Ritz-Weaselton sections" className="rw-nav">
+            <Button className="rw-nav-item" onClick={() => setActiveView("search")} variant={activeView === "search" ? "default" : "ghost"}>
+              <HouseIcon weight="duotone" /> Search stays
             </Button>
-            <Button
-              className="h-11 rounded-xl px-5 text-base"
-              disabled={!job}
-              onClick={() => setActiveView("results")}
-              variant={activeView === "results" ? "default" : "outline"}
-            >
-              Results
+            <Button className="rw-nav-item" disabled={!job} onClick={() => setActiveView("results")} variant={activeView === "results" ? "default" : "ghost"}>
+              <MapTrifoldIcon weight="duotone" /> Comparison desk
             </Button>
-            <Button
-              className="h-11 rounded-xl px-5 text-base"
-              onClick={() => setActiveView("library")}
-              variant={activeView === "library" ? "default" : "outline"}
-            >
-              Settings
+            <Button className="rw-nav-item" onClick={() => setActiveView("library")} variant={activeView === "library" ? "default" : "ghost"}>
+              <SlidersHorizontalIcon weight="duotone" /> Code library
             </Button>
-            <Button
-              className="h-11 rounded-xl px-5 text-base"
-              onClick={() => setActiveView("history")}
-              variant={activeView === "history" ? "default" : "outline"}
-            >
-              History
+            <Button className="rw-nav-item" onClick={() => setActiveView("history")} variant={activeView === "history" ? "default" : "ghost"}>
+              <ClockCounterClockwiseIcon weight="duotone" /> Search history
             </Button>
           </nav>
-        </header>
+          <div className="rw-rail-note">
+            <SparkleIcon weight="fill" />
+            <p>Rates are requested live from Marriott. Your codes stay in this browser.</p>
+          </div>
+        </aside>
+
+        <main className="rw-stage">
 
         {activeView === "search" ? (
-          <div className="flex flex-1 items-center justify-center py-6 md:py-10">
-            <div className="grid w-full max-w-5xl gap-6">
-              <div className="mx-auto grid w-full max-w-3xl gap-4 text-center">
-                <div className="flex justify-center gap-2">
-                  <Badge variant="secondary">Live Marriott pricing</Badge>
-                  <Badge variant="secondary">Server-side compare</Badge>
-                  <Badge variant="secondary">Preset-first</Badge>
-                </div>
-                <h2 className="font-heading text-5xl leading-[0.95] tracking-tight text-foreground md:text-6xl">
-                  Find the rate worth booking.
-                </h2>
-                <p className="mx-auto max-w-2xl text-base text-muted-foreground md:text-lg">
-                  Live Marriott comparisons, without the spreadsheet.
-                </p>
-              </div>
+          <section className="rw-search-view">
+            <header className="rw-search-masthead">
+              <div className="rw-eyebrow"><CompassIcon weight="fill" /> Marriott rate comparison</div>
+              <h2>Start with the stay.<br /><em>Then find the better rate.</em></h2>
+              <p>Choose a destination, set your dates, and let Ritz-Weaselton compare the codes worth trying.</p>
+              <div className="rw-proof"><span>Live rates</span><span>Australian dates</span><span>All prices retained</span></div>
+            </header>
 
-              <Card className="rw-search-card mx-auto w-full max-w-4xl">
-                <CardContent className="grid gap-6 px-5 py-5 md:px-6 md:py-6">
+            <div className="rw-search-grid">
+              <Card className="rw-search-card">
+                <CardContent className="grid gap-6 p-5 md:p-7">
                   <form className="grid gap-6" onSubmit={handleSearchSubmit}>
-                    <FieldGroup>
-                          <div className="grid gap-4">
-                        <Field>
-                          <FieldLabel htmlFor="city">Where are you staying?</FieldLabel>
-                          <FieldContent>
-                            <DestinationPicker onChange={(nextCity, nextCountry) => { setCity(nextCity); setCountry(nextCountry) }} value={city} />
-                            <input name="country" type="hidden" value={country} />
-                          </FieldContent>
-                        </Field>
-                      </div>
-                    </FieldGroup>
+                    <div className="rw-form-step"><span>01</span><p>Destination</p></div>
+                    <Field>
+                      <FieldLabel htmlFor="city">Where would you like to stay?</FieldLabel>
+                      <FieldContent>
+                        <DestinationPicker onChange={(nextCity, nextCountry) => { setCity(nextCity); setCountry(nextCountry) }} value={city} />
+                        <input name="country" type="hidden" value={country} />
+                      </FieldContent>
+                    </Field>
 
-                    <FieldGroup>
+                    <div className="rw-form-step"><span>02</span><p>Dates</p></div>
+                    <FieldGroup className="rw-date-fields">
                       <div className="grid gap-4 md:grid-cols-2">
                         <Field>
                           <FieldLabel htmlFor="checkIn">Check-in <span className="font-normal text-muted-foreground">(DD/MM/YYYY)</span></FieldLabel>
@@ -571,11 +547,11 @@ export default function App() {
                       </div>
                     </FieldGroup>
 
-                    <FieldSet className="grid gap-4 rounded-xl border border-border/70 bg-muted/20 p-4">
+                    <FieldSet className="rw-code-runner">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="grid gap-1">
-                          <FieldLegend>Codes</FieldLegend>
-                          <FieldDescription>Pick a preset here. Manage the full code library in Settings.</FieldDescription>
+                          <FieldLegend><span className="rw-step-inline">03</span> Rate codes</FieldLegend>
+                          <FieldDescription>Start small, or open the full code library for a deliberate all-code run.</FieldDescription>
                         </div>
                         <Button
                           className="rounded-xl"
@@ -612,28 +588,29 @@ export default function App() {
                         {selectedCodes.length > 4 ? <Badge variant="secondary">+{selectedCodes.length - 4} more</Badge> : null}
                       </div>
                       <Button
+                        className="rw-all-codes"
                         onClick={() => updateSelected(codes.map((code) => code.code))}
                         type="button"
                         variant="outline"
                       >
-                        Run all {codes.length} codes
+                        Compare all {codes.length} codes <span>Longer live run</span>
                       </Button>
                     </FieldSet>
 
-                    <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
-                      <Button className="h-13 px-5 text-base md:min-w-64" disabled={isSearching} type="submit">
+                    <div className="rw-submit-row">
+                      <Button className="rw-submit" disabled={isSearching} type="submit">
                         <MagnifyingGlassIcon data-icon="inline-start" />
                         {isSearching ? "Search running" : "Run live comparison"}
                       </Button>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Need custom codes or favorites?</span>
+                      <div className="rw-submit-hint">
+                        <span>{selectedCodes.length} codes selected</span>
                         <Button
-                          className="rounded-xl px-3"
+                          className="px-0"
                           onClick={() => setActiveView("library")}
                           type="button"
                           variant="ghost"
                         >
-                          Settings
+                          Fine-tune codes
                         </Button>
                       </div>
                     </div>
@@ -642,45 +619,33 @@ export default function App() {
                 </CardContent>
               </Card>
 
-              <div className="mx-auto grid w-full max-w-4xl gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-foreground">Recent searches</p>
-                  {history.length ? (
-                    <Button onClick={() => setActiveView("history")} size="sm" variant="ghost">
-                      View all
-                    </Button>
-                  ) : null}
+              <aside className="rw-search-aside">
+                <div className="rw-aside-label">Your run</div>
+                <p className="rw-selection-number">{selectedCodes.length}<span>codes</span></p>
+                <p className="text-sm text-muted-foreground">{selectedPresetId ? presets.find((preset) => preset.id === selectedPresetId)?.name || "Custom selection" : "Custom selection"}</p>
+                <div className="rw-code-preview">
+                  {selectedCodes.slice(0, 8).map((code) => <span key={code}>{codeLabel(code)}</span>)}
+                  {selectedCodes.length > 8 ? <span>+{selectedCodes.length - 8}</span> : null}
                 </div>
+                <Separator />
+                <div className="rw-aside-label">Recent stays</div>
                 {history.length ? (
-                    <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rw-history-stack">
                     {history.slice(0, 3).map((entry) => (
-                      <Button
-                        key={entry.id}
-                        className="h-auto justify-start rounded-xl border-border/70 bg-background/88 px-4 py-4 text-left shadow-[0_12px_30px_rgba(69,46,23,0.06)]"
-                        onClick={() => handleRestoreHistory(entry)}
-                        variant="outline"
-                      >
-                        <div className="flex flex-col gap-1.5">
-                          <span className="font-medium">{entry.destination}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTime(entry.createdAt)} • {entry.propertyCount} properties • {entry.codes.length} codes
-                          </span>
-                        </div>
-                      </Button>
+                      <button key={entry.id} onClick={() => handleRestoreHistory(entry)} type="button">
+                        <strong>{entry.destination}</strong><span>{entry.propertyCount} properties · {entry.codes.length} codes</span>
+                      </button>
                     ))}
                   </div>
-                ) : (
-                  <Card className="border-dashed border-border/70 bg-background/70">
-                    <CardContent className="px-5 py-5">
-                      <p className="text-sm text-muted-foreground">
-                        Your recent runs will show up here after the first search.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                ) : <p className="text-sm text-muted-foreground">Your completed runs will be saved here.</p>}
+                {history.length ? (
+                  <Button onClick={() => setActiveView("history")} size="sm" variant="ghost">
+                    View all history
+                  </Button>
+                ) : null}
+              </aside>
             </div>
-          </div>
+          </section>
         ) : null}
 
         {activeView === "results" ? (
@@ -1202,6 +1167,7 @@ export default function App() {
             </CardContent>
           </Card>
         ) : null}
+        </main>
       </div>
     </div>
   )
