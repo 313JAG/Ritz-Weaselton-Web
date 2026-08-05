@@ -10,6 +10,10 @@ function keyForResult(id, code) {
   return `${keyForJob(id)}:result:${encodeURIComponent(code)}`;
 }
 
+function keyForLock(id) {
+  return `${keyForJob(id)}:lock`;
+}
+
 function redisUrl() {
   return process.env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_KV_REST_API_URL || '';
 }
@@ -142,13 +146,43 @@ async function getJobRecord(id) {
   return readJson(keyForJob(id));
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withJobLock(id, action) {
+  // Queue deliveries for a job run in parallel. A small Redis lock keeps the
+  // read-modify-write job record atomic so one code cannot erase another
+  // code's status update. The result payloads themselves remain independent.
+  if (!hasRedis()) return action();
+
+  const lockKey = keyForLock(id);
+  const token = randomUUID();
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    const acquired = await command(['SET', lockKey, token, 'NX', 'PX', '10000']);
+    if (acquired === 'OK') {
+      try {
+        return await action();
+      } finally {
+        // Only delete our own lock; a timed-out lock may have been replaced.
+        await command(['EVAL', "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0", '1', lockKey, token]);
+      }
+    }
+    await wait(25 + Math.floor(Math.random() * 50));
+  }
+  throw new Error('Search job is busy. Please retry.');
+}
+
 async function updateJob(id, updater) {
-  const job = await readJson(keyForJob(id));
-  if (!job) throw new Error('Search job not found');
-  const next = updater(job) || job;
-  next.updatedAt = new Date().toISOString();
-  await writeJson(keyForJob(id), next);
-  return next;
+  return withJobLock(id, async () => {
+    const job = await readJson(keyForJob(id));
+    if (!job) throw new Error('Search job not found');
+    const next = updater(job) || job;
+    next.updatedAt = new Date().toISOString();
+    await writeJson(keyForJob(id), next);
+    return next;
+  });
 }
 
 async function markRunning(id, code, attempts) {
