@@ -49,6 +49,13 @@ async function readJson(key) {
   return value ? JSON.parse(value) : null;
 }
 
+async function readJsonMany(keys) {
+  if (!keys.length) return [];
+  if (!hasRedis()) return keys.map((key) => fallback().get(key) || null);
+  const values = await command(['MGET', ...keys]);
+  return (values || []).map((value) => value ? JSON.parse(value) : null);
+}
+
 async function writeJson(key, value, ttl = JOB_TTL_SECONDS) {
   if (!hasRedis()) {
     fallback().set(key, value);
@@ -89,21 +96,19 @@ function serialize(job, resultEntries) {
       successfulCodes,
       failedCodes: failedCodes.length,
       runningCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'running'),
+      queuedCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'queued').length,
+      workerLimit: job.workerLimit || 24,
     },
     failedCodes,
+    codeStates: job.codeStates,
     results,
   };
 }
 
 async function hydrate(job) {
-  const resultEntries = new Map();
-  for (const code of job.codeOrder) {
-    const state = job.codeStates[code];
-    if (state?.status === 'completed' || state?.status === 'failed') {
-      const value = await readJson(keyForResult(job.id, code));
-      if (value) resultEntries.set(code, value);
-    }
-  }
+  const completedCodes = job.codeOrder.filter((code) => ['completed', 'failed'].includes(job.codeStates[code]?.status));
+  const values = await readJsonMany(completedCodes.map((code) => keyForResult(job.id, code)));
+  const resultEntries = new Map(completedCodes.map((code, index) => [code, values[index]]).filter(([, value]) => Boolean(value)));
   return serialize(job, resultEntries);
 }
 
@@ -120,6 +125,7 @@ async function createJob(params) {
     updatedAt: now,
     completedAt: null,
     params: { ...params, codes: codeOrder },
+    workerLimit: 24,
     codeOrder,
     codeStates: Object.fromEntries(codeOrder.map((code) => [code, { status: 'queued', attempts: 0, error: null }])),
   };
@@ -212,4 +218,5 @@ module.exports = {
   cancelJob,
   resetFailed,
   hasRedis,
+  readJsonMany,
 };
