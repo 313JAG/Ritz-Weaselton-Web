@@ -344,8 +344,8 @@ function buildPayload(params, offset = 0) {
           rateRequestTypes: code && code !== 'BASELINE' ? [{ type: 'CLUSTER', value: code }] : [],
           quantity: 1,
           customerId: '',
-          // Request Marriott's all-in figure. We display this only when the
-          // response supplies a total; it avoids presenting a pre-tax teaser.
+          // Request the detailed response so we can retain the returned
+          // components, while comparing Marriott's advertised booking quote.
           includeTaxesAndFees: true,
           includeUnavailableProperties: true,
         },
@@ -407,20 +407,21 @@ function extractRateInfo(rates, params = {}) {
 
   const rateModes = withAmount?.rateModes || {};
   const details = rateModes.lowestAverageRate || rateModes.cashAndPointsPerUnit || {};
-  // Marriott's dated-search fields are *average nightly* amounts, despite the
-  // `totalAmount` name. The old implementation divided this figure by the stay
-  // length a second time, producing impossibly low results (for example, a
-  // $314.36 nightly DTC rate was displayed as $157 for a two-night stay).
-  // Only use the complete amount for price comparison: it is the nightly amount
-  // that Marriott returns with taxes and the mandatory-fee amount included.
-  const nightlyAllIn = toDisplayPrice(details.totalAmount);
+  // Marriott presents `amount` as its advertised average nightly booking quote.
+  // `totalAmount` is a separate tax/fee-expanded amount, and using it here made
+  // our comparison disagree with Marriott's own rate card. Keep the quoted rate
+  // as the comparable price; checkout remains the source of truth for taxes.
+  const quotedNightlyAmount = details.amount || details.amountPlusMandatoryFees;
+  const quotedNightlyRate = toDisplayPrice(quotedNightlyAmount);
   const nights = Math.max(1, Math.round((new Date(`${params.checkOut}T12:00:00`) - new Date(`${params.checkIn}T12:00:00`)) / 86400000) || 1);
   return {
-    price: nightlyAllIn === null ? 'N/A' : nightlyAllIn,
-    currency: details.totalAmount?.currency || null,
-    totalPrice: nightlyAllIn === null ? 'N/A' : Math.round(nightlyAllIn * nights * 100) / 100,
-    taxes: nightlyAllIn === null || toDisplayPrice(details.taxes) === null ? null : Math.round(toDisplayPrice(details.taxes) * nights * 100) / 100,
-    fees: nightlyAllIn === null || toDisplayPrice(details.fees) === null ? null : Math.round(toDisplayPrice(details.fees) * nights * 100) / 100,
+    price: quotedNightlyRate === null ? 'N/A' : quotedNightlyRate,
+    currency: quotedNightlyAmount?.currency || null,
+    totalPrice: quotedNightlyRate === null ? 'N/A' : Math.round(quotedNightlyRate * nights * 100) / 100,
+    // Preserve returned components for diagnostics without implying they are
+    // included in the displayed booking quote.
+    taxes: toDisplayPrice(details.taxes),
+    fees: toDisplayPrice(details.fees),
   };
 }
 
