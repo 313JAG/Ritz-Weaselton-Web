@@ -77,6 +77,10 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
 
   async function find(next: string) {
     setQuery(next)
+    // Keep the form usable worldwide even when Maps is slow, unavailable, or
+    // has not suggested a specific place yet. A selected suggestion later
+    // replaces this with Apple's resolved place and country.
+    onChange(next, "")
     const token = ++request.current
     if (next.trim().length < 2) return setChoices([])
     setLoading(true)
