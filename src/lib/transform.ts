@@ -307,7 +307,10 @@ export function formatCurrency(value: number | null, currency: string | null) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency || "USD",
-    maximumFractionDigits: 0,
+    // Preserve cents when Marriott supplies them so a quote cannot appear to
+    // differ simply because our display rounded it to a different whole dollar.
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
