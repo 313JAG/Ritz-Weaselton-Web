@@ -3,10 +3,10 @@ const DEFAULT_TIMEOUT_MS = 45000;
 const SEARCH_ENDPOINT = 'https://www.marriott.com/mi/query/phoenixShopDatedSearchByDestinationQuery';
 const SEARCH_OPERATION_NAME = 'phoenixShopDatedSearchByDestinationQuery';
 const SEARCH_SIGNATURE = '19936acf228edb1a7c43b0b5e2102ef9cbe7e79c0f8fadd0d03bada15f4a6c25';
-// A city search should be useful for an actual stay, not a 50-mile regional
-// sweep. Ten miles keeps San Francisco searches centred on the city and makes
-// large code comparisons substantially lighter.
-const SEARCH_DISTANCE_METERS = 16093.4;
+// Ritz searches should be about the selected place, not an entire metro area.
+// Five kilometres is a useful walking/short-drive radius for a landmark,
+// neighbourhood, airport, or city-centre stay.
+const SEARCH_DISTANCE_METERS = 5000;
 const PAGE_SIZE = 40;
 // A code can return several property pages. Fetching every page serially was
 // the largest avoidable delay in library-wide searches. Two at a time keeps
