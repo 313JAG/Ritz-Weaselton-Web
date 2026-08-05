@@ -14,6 +14,7 @@ import {
 
 import { PropertyMap } from "@/components/property-map"
 import { DestinationPicker } from "@/components/destination-picker"
+import { ComparisonWorkspace } from "@/components/comparison-workspace"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -649,6 +650,25 @@ export default function App() {
         ) : null}
 
         {activeView === "results" ? (
+          <ComparisonWorkspace
+            codeProgress={codeProgress}
+            isSearching={isSearching}
+            job={job}
+            onBack={() => setActiveView("search")}
+            onCancel={() => void handleCancelSearch()}
+            onPropertyQuery={setPropertyQuery}
+            onRetry={() => void handleRetryFailed()}
+            onSelect={focusProperty}
+            onToggleUnavailable={() => setShowUnavailableRates((value) => !value)}
+            properties={properties}
+            propertyQuery={propertyQuery}
+            selectedProperty={selectedProperty}
+            showUnavailableRates={showUnavailableRates}
+            visibleProperties={visibleProperties}
+          />
+        ) : null}
+
+        {false ? (
           <div className="grid gap-6">
             <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
               <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
