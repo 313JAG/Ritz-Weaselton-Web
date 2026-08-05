@@ -4,43 +4,13 @@ import { MapPinIcon, SpinnerGapIcon } from "@phosphor-icons/react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DESTINATIONS } from "@/lib/destinations"
-
-declare global {
-  interface Window {
-    mapkit?: any
-    __rwAppleMapsPromise?: Promise<any>
-    __rwAppleMapsInitialized?: boolean
-    __rwAppleMapsReady?: () => void
-  }
-}
+import { loadAppleMapKit } from "@/lib/apple-mapkit"
 
 type Choice = { label: string; city: string; country: string; searchTerm: string; raw?: any }
 
 async function mapkitSearch() {
-  if (!window.mapkit) {
-    if (!window.__rwAppleMapsPromise) {
-      window.__rwAppleMapsPromise = new Promise((resolve, reject) => {
-        window.__rwAppleMapsReady = () => window.mapkit ? resolve(window.mapkit) : reject(new Error("Apple Maps failed to initialize"))
-        const script = document.createElement("script")
-        script.src = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"
-        script.async = true
-        script.setAttribute("data-callback", "__rwAppleMapsReady")
-        script.onerror = () => reject(new Error("Apple Maps failed to load"))
-        document.head.appendChild(script)
-      })
-    }
-    await window.__rwAppleMapsPromise
-  }
-  if (!window.__rwAppleMapsInitialized) {
-    window.mapkit.init({ authorizationCallback: async (done: (token: string) => void) => {
-      const response = await fetch("/api/apple-maps-token")
-      const data = await response.json()
-      if (!response.ok || !data.token) throw new Error(data.error || "Apple Maps is unavailable")
-      done(data.token)
-    } })
-    window.__rwAppleMapsInitialized = true
-  }
-  return new window.mapkit.Search({ includeAddresses: true, includePointsOfInterest: true, includeQueries: false })
+  const mapkit = await loadAppleMapKit()
+  return new mapkit.Search({ includeAddresses: true, includePointsOfInterest: true, includeQueries: false })
 }
 
 function fallback(query: string): Choice[] {
@@ -129,7 +99,8 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
     : null
 
   return <div className="relative">
-    <div className="relative"><MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input name="city" type="hidden" value={value} /><Input className="h-14 pl-10 pr-10 text-base md:text-lg" id="city" onChange={(event) => void find(event.target.value)} placeholder="City, landmark, airport, or neighbourhood" value={query} />{loading ? <SpinnerGapIcon className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}</div>
+    <input name="city" type="hidden" value={value} />
+    <div className="relative"><MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input className="h-14 pl-10 pr-10 text-base md:text-lg" id="city" onChange={(event) => void find(event.target.value)} placeholder="City, landmark, airport, or neighbourhood" value={query} />{loading ? <SpinnerGapIcon className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}</div>
     {choices.length || freeTextChoice ? <div className="absolute z-20 mt-2 grid w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-xl">{choices.map((choice) => <Button className="justify-start whitespace-normal px-3 py-3 text-left" key={`${choice.label}-${choice.city}`} onClick={() => void select(choice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{choice.label}</Button>)}{freeTextChoice ? <Button className="justify-start whitespace-normal px-3 py-3 text-left" onClick={() => void select(freeTextChoice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{freeTextChoice.label}</Button> : null}</div> : null}
   </div>
 }

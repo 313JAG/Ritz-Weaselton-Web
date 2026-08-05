@@ -2,72 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { type PropertySummary } from "@/lib/transform"
-
-declare global {
-  interface Window {
-    mapkit?: any
-    __rwAppleMapsPromise?: Promise<any>
-    __rwAppleMapsInitialized?: boolean
-    __rwAppleMapsReady?: () => void
-  }
-}
+import { loadAppleMapKit } from "@/lib/apple-mapkit"
 
 type PropertyMapProps = {
   properties: PropertySummary[]
   selectedProperty: string | null
   onSelect: (key: string) => void
-}
-
-function loadAppleMapKit() {
-  if (window.mapkit) {
-    return Promise.resolve(window.mapkit)
-  }
-
-  if (window.__rwAppleMapsPromise) {
-    return window.__rwAppleMapsPromise
-  }
-
-  window.__rwAppleMapsPromise = new Promise((resolve, reject) => {
-    window.__rwAppleMapsReady = () => {
-      if (window.mapkit) {
-        resolve(window.mapkit)
-      } else {
-        reject(new Error("Apple Maps failed to initialize"))
-      }
-    }
-
-    const script = document.createElement("script")
-    script.src = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js"
-    script.async = true
-    script.crossOrigin = "anonymous"
-    script.setAttribute("data-callback", "__rwAppleMapsReady")
-    script.onerror = () => reject(new Error("Apple Maps failed to load"))
-    document.head.appendChild(script)
-  })
-
-  return window.__rwAppleMapsPromise
-}
-
-async function initializeAppleMapKit() {
-  const mapkit = await loadAppleMapKit()
-
-  if (!window.__rwAppleMapsInitialized) {
-    mapkit.init({
-      authorizationCallback: async (done: (token: string) => void) => {
-        const response = await fetch("/api/apple-maps-token")
-        const data = await response.json().catch(() => ({}))
-
-        if (!response.ok || !data.token) {
-          throw new Error(data.error || "Apple Maps token request failed")
-        }
-
-        done(data.token)
-      },
-    })
-    window.__rwAppleMapsInitialized = true
-  }
-
-  return mapkit
 }
 
 function glyphLabel(property: PropertySummary) {
@@ -101,7 +41,7 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
 
     let cancelled = false
 
-    initializeAppleMapKit()
+    loadAppleMapKit()
       .then((mapkit) => {
         if (cancelled || !containerRef.current) return
 
