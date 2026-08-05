@@ -386,11 +386,14 @@ function toDisplayPrice(amount) {
   return Math.round(Number(amount.amount) / scale);
 }
 
-function extractRateInfo(rates) {
+function extractRateInfo(rates, params = {}) {
   if (!Array.isArray(rates) || rates.length === 0) {
     return {
       price: 'N/A',
       currency: null,
+      totalPrice: 'N/A',
+      taxes: null,
+      fees: null,
     };
   }
 
@@ -414,9 +417,15 @@ function extractRateInfo(rates) {
     rateModes.cashAndPointsPerUnit?.amount ||
     rateModes.lowestAverageRate?.totalAmount;
 
+  const total = toDisplayPrice(amount);
+  const nights = Math.max(1, Math.round((new Date(`${params.checkOut}T12:00:00`) - new Date(`${params.checkIn}T12:00:00`)) / 86400000) || 1);
+  const details = rateModes.lowestAverageRate || rateModes.cashAndPointsPerUnit || {};
   return {
-    price: toDisplayPrice(amount) ?? 'N/A',
+    price: total === null ? 'N/A' : Math.round((total / nights) * 100) / 100,
     currency: amount?.currency || null,
+    totalPrice: total ?? 'N/A',
+    taxes: toDisplayPrice(details.taxes),
+    fees: toDisplayPrice(details.fees) ?? toDisplayPrice(details.mandatoryFees),
   };
 }
 
@@ -445,7 +454,7 @@ function extractDescription(descriptions) {
   return marketingCaption?.text || '';
 }
 
-function parseHotelNode(node) {
+function parseHotelNode(node, params) {
   const property = node?.property || {};
   const basic = property.basicInformation || {};
   const imageNode = property.media?.primaryImage?.edges?.[0]?.node;
@@ -454,13 +463,16 @@ function parseHotelNode(node) {
     imageNode?.imageUrls?.classicHorizontal ||
     imageNode?.imageUrls?.square ||
     '';
-  const rateInfo = extractRateInfo(node?.rates);
+  const rateInfo = extractRateInfo(node?.rates, params);
 
   return {
     propertyId: property.id || '',
     name: basic.name || '',
     price: rateInfo.price,
     currency: rateInfo.currency || basic.currency || null,
+    totalPrice: rateInfo.totalPrice,
+    taxes: rateInfo.taxes,
+    fees: rateInfo.fees,
     rating: property.reviews?.stars?.count ?? null,
     reviewCount: property.reviews?.numberOfReviews?.count ?? null,
     distanceMeters: node?.distance === null || node?.distance === undefined ? null : Number(node.distance),
@@ -561,7 +573,7 @@ async function fetchAllHotelsForCode(params) {
     }
 
     const pageHotels = Array.isArray(connection.edges)
-      ? connection.edges.map((edge) => parseHotelNode(edge?.node)).filter((hotel) => hotel.name)
+      ? connection.edges.map((edge) => parseHotelNode(edge?.node, params)).filter((hotel) => hotel.name)
       : [];
     for (const hotel of pageHotels) {
       byName.set(hotel.name, hotel);
