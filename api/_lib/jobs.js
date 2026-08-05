@@ -1,5 +1,6 @@
 const { createJob, getJob, cancelJob, resetFailed, hasRedis } = require('./job-store');
 const { enqueueCode } = require('./search-queue');
+const WORKER_CONCURRENCY = 3;
 
 function assertConfigured() {
   if (process.env.VERCEL && !hasRedis()) {
@@ -10,8 +11,9 @@ function assertConfigured() {
 async function startSearch(params) {
   assertConfigured();
   const job = await createJob(params);
-  const firstCode = job.params.codes[0];
-  await enqueueCode({ jobId: job.id, code: firstCode, index: 0 });
+  await Promise.all(job.params.codes.slice(0, WORKER_CONCURRENCY).map((code, index) =>
+    enqueueCode({ jobId: job.id, code, index })
+  ));
   return job;
 }
 
@@ -28,4 +30,4 @@ async function retryFailed(id) {
   return job;
 }
 
-module.exports = { startSearch, getJob, cancelJob, retryFailed };
+module.exports = { startSearch, getJob, cancelJob, retryFailed, WORKER_CONCURRENCY };
