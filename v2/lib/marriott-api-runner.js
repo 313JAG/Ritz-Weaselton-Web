@@ -383,7 +383,7 @@ function toDisplayPrice(amount) {
   }
   const decimalPoint = Number(amount.decimalPoint || 0);
   const scale = 10 ** decimalPoint;
-  return Math.round(Number(amount.amount) / scale);
+  return Math.round((Number(amount.amount) / scale) * 100) / 100;
 }
 
 function extractRateInfo(rates, params = {}) {
@@ -401,31 +401,26 @@ function extractRateInfo(rates, params = {}) {
     const rateModes = rate?.rateModes || {};
     return Boolean(
       rateModes.lowestAverageRate?.totalAmount ||
-        rateModes.lowestAverageRate?.amountPlusMandatoryFees ||
-        rateModes.lowestAverageRate?.amount ||
-        rateModes.cashAndPointsPerUnit?.amountPlusMandatoryFees ||
-        rateModes.cashAndPointsPerUnit?.amount
+        rateModes.cashAndPointsPerUnit?.totalAmount
     );
   }) || rates[0];
 
   const rateModes = withAmount?.rateModes || {};
-  const amount =
-    rateModes.lowestAverageRate?.totalAmount ||
-    rateModes.lowestAverageRate?.amountPlusMandatoryFees ||
-    rateModes.lowestAverageRate?.amount ||
-    rateModes.cashAndPointsPerUnit?.amountPlusMandatoryFees ||
-    rateModes.cashAndPointsPerUnit?.amount ||
-    rateModes.lowestAverageRate?.totalAmount;
-
-  const total = toDisplayPrice(amount);
-  const nights = Math.max(1, Math.round((new Date(`${params.checkOut}T12:00:00`) - new Date(`${params.checkIn}T12:00:00`)) / 86400000) || 1);
   const details = rateModes.lowestAverageRate || rateModes.cashAndPointsPerUnit || {};
+  // Marriott's dated-search fields are *average nightly* amounts, despite the
+  // `totalAmount` name. The old implementation divided this figure by the stay
+  // length a second time, producing impossibly low results (for example, a
+  // $314.36 nightly DTC rate was displayed as $157 for a two-night stay).
+  // Only use the complete amount for price comparison: it is the nightly amount
+  // that Marriott returns with taxes and the mandatory-fee amount included.
+  const nightlyAllIn = toDisplayPrice(details.totalAmount);
+  const nights = Math.max(1, Math.round((new Date(`${params.checkOut}T12:00:00`) - new Date(`${params.checkIn}T12:00:00`)) / 86400000) || 1);
   return {
-    price: total === null ? 'N/A' : Math.round((total / nights) * 100) / 100,
-    currency: amount?.currency || null,
-    totalPrice: total ?? 'N/A',
-    taxes: toDisplayPrice(details.taxes),
-    fees: toDisplayPrice(details.fees) ?? toDisplayPrice(details.mandatoryFees),
+    price: nightlyAllIn === null ? 'N/A' : nightlyAllIn,
+    currency: details.totalAmount?.currency || null,
+    totalPrice: nightlyAllIn === null ? 'N/A' : Math.round(nightlyAllIn * nights * 100) / 100,
+    taxes: nightlyAllIn === null || toDisplayPrice(details.taxes) === null ? null : Math.round(toDisplayPrice(details.taxes) * nights * 100) / 100,
+    fees: nightlyAllIn === null || toDisplayPrice(details.fees) === null ? null : Math.round(toDisplayPrice(details.fees) * nights * 100) / 100,
   };
 }
 
@@ -679,5 +674,6 @@ module.exports = {
   MarriottApiRunner,
   buildCacheKey,
   buildSearchUrl,
+  extractRateInfo,
   normalizeCode,
 };
