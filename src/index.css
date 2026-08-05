@@ -51,30 +51,30 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.147 0.004 49.3);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.147 0.004 49.3);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.147 0.004 49.3);
-    --primary: oklch(0.555 0.163 48.998);
-    --primary-foreground: oklch(0.987 0.022 95.277);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.96 0.002 17.2);
-    --muted-foreground: oklch(0.547 0.021 43.1);
-    --accent: oklch(0.96 0.002 17.2);
-    --accent-foreground: oklch(0.214 0.009 43.1);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0.005 34.3);
-    --input: oklch(0.922 0.005 34.3);
-    --ring: oklch(0.714 0.014 41.2);
+    --background: oklch(0.16 0.025 258);
+    --foreground: oklch(0.96 0.01 250);
+    --card: oklch(0.205 0.028 258);
+    --card-foreground: oklch(0.96 0.01 250);
+    --popover: oklch(0.23 0.03 258);
+    --popover-foreground: oklch(0.96 0.01 250);
+    --primary: oklch(0.72 0.16 245);
+    --primary-foreground: oklch(0.14 0.03 258);
+    --secondary: oklch(0.27 0.025 258);
+    --secondary-foreground: oklch(0.92 0.01 250);
+    --muted: oklch(0.24 0.02 258);
+    --muted-foreground: oklch(0.73 0.02 250);
+    --accent: oklch(0.3 0.04 250);
+    --accent-foreground: oklch(0.97 0.01 250);
+    --destructive: oklch(0.68 0.19 25);
+    --border: oklch(0.34 0.025 258 / 75%);
+    --input: oklch(0.32 0.025 258);
+    --ring: oklch(0.72 0.16 245);
     --chart-1: oklch(0.868 0.007 39.5);
     --chart-2: oklch(0.547 0.021 43.1);
     --chart-3: oklch(0.438 0.017 39.3);
     --chart-4: oklch(0.367 0.016 35.7);
     --chart-5: oklch(0.268 0.011 36.5);
-    --radius: 0.625rem;
+    --radius: 1rem;
     --sidebar: oklch(0.986 0.002 67.8);
     --sidebar-foreground: oklch(0.147 0.004 49.3);
     --sidebar-primary: oklch(0.666 0.179 58.318);
@@ -129,6 +129,39 @@
   html {
     @apply font-sans;
     }
+}
+
+.rw-app-shell {
+  background:
+    radial-gradient(circle at 15% -10%, rgba(49, 130, 206, 0.26), transparent 34rem),
+    radial-gradient(circle at 100% 0%, rgba(119, 92, 230, 0.2), transparent 32rem),
+    var(--background);
+}
+
+.rw-topbar,
+.rw-search-card {
+  border: 1px solid color-mix(in oklab, var(--border), transparent 15%);
+  background: color-mix(in oklab, var(--card), transparent 8%);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(18px);
+}
+
+.rw-topbar {
+  border-radius: 1.25rem;
+}
+
+.rw-search-card {
+  border-radius: 1.5rem;
+}
+
+.rw-app-shell [data-slot="card"] {
+  border-color: color-mix(in oklab, var(--border), transparent 12%);
+  background-color: color-mix(in oklab, var(--card), transparent 5%);
+}
+
+.rw-app-shell input,
+.rw-app-shell select {
+  background-color: color-mix(in oklab, var(--background), transparent 20%);
 }
 
 .rw-google-pin {
