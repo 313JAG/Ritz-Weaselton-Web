@@ -1,6 +1,10 @@
 const { randomUUID } = require('node:crypto');
 
 const JOB_TTL_SECONDS = 24 * 60 * 60;
+// Hotel payloads can be large. Upstash rejects a single MGET response above
+// 10 MB, which previously made the browser look stuck near completion even
+// while queued code checks were still running.
+const RESULT_READ_BATCH_SIZE = 2;
 
 function keyForJob(id) {
   return `ritz:search-job:${id}`;
@@ -56,8 +60,12 @@ async function readJson(key) {
 async function readJsonMany(keys) {
   if (!keys.length) return [];
   if (!hasRedis()) return keys.map((key) => fallback().get(key) || null);
-  const values = await command(['MGET', ...keys]);
-  return (values || []).map((value) => value ? JSON.parse(value) : null);
+  const values = [];
+  for (let index = 0; index < keys.length; index += RESULT_READ_BATCH_SIZE) {
+    const batch = await command(['MGET', ...keys.slice(index, index + RESULT_READ_BATCH_SIZE)]);
+    values.push(...(batch || []));
+  }
+  return values.map((value) => value ? JSON.parse(value) : null);
 }
 
 async function writeJson(key, value, ttl = JOB_TTL_SECONDS) {
