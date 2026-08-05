@@ -225,15 +225,36 @@ export default function App() {
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    void runSearch()
+    // Read the submitted controls rather than relying only on React state. This avoids
+    // a fast click after editing a date from submitting the value from the prior render.
+    const formData = new FormData(event.currentTarget)
+    const submittedParams = {
+      city: String(formData.get("city") || "").trim(),
+      country: String(formData.get("country") || ""),
+      checkIn: String(formData.get("checkIn") || ""),
+      checkOut: String(formData.get("checkOut") || ""),
+    }
+    setCity(submittedParams.city)
+    setCountry(submittedParams.country)
+    setCheckIn(submittedParams.checkIn)
+    setCheckOut(submittedParams.checkOut)
+    void runSearch(undefined, submittedParams)
   }
 
-  async function runSearch(codesOverride?: string[]) {
-    if (!city.trim()) {
+  async function runSearch(
+    codesOverride?: string[],
+    submittedParams?: { city: string; country: string; checkIn: string; checkOut: string }
+  ) {
+    const searchCity = submittedParams?.city ?? city
+    const searchCountry = submittedParams?.country ?? country
+    const searchCheckIn = submittedParams?.checkIn ?? checkIn
+    const searchCheckOut = submittedParams?.checkOut ?? checkOut
+
+    if (!searchCity.trim()) {
       setError("Choose a destination before running a search")
       return
     }
-    if (!checkIn || !checkOut || checkOut <= checkIn) {
+    if (!searchCheckIn || !searchCheckOut || searchCheckOut <= searchCheckIn) {
       setError("Check-out must be at least one day after check-in")
       return
     }
@@ -249,10 +270,10 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          city,
-          country,
-          checkIn,
-          checkOut,
+          city: searchCity,
+          country: searchCountry,
+          checkIn: searchCheckIn,
+          checkOut: searchCheckOut,
           codes: ["BASELINE", ...(codesOverride || selectedCodes)],
         }),
       })
@@ -522,6 +543,7 @@ export default function App() {
                               className="h-13 text-base md:text-lg"
                               id="city"
                               list="destination-options"
+                              name="city"
                               onChange={(event) => handleDestinationChange(event.target.value)}
                               placeholder="Las Vegas"
                               value={city}
@@ -540,6 +562,7 @@ export default function App() {
                             <select
                               className="h-13 w-full rounded-md border border-input bg-background px-3 text-base md:text-lg"
                               id="country"
+                              name="country"
                               value={country}
                               onChange={(event) => setCountry(event.target.value)}
                             >
@@ -555,14 +578,14 @@ export default function App() {
                         <Field>
                           <FieldLabel htmlFor="checkIn">Check-in</FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkIn" min={getLocalDate()} onChange={(event) => handleCheckInChange(event.target.value)} type="date" value={checkIn} />
+                            <Input className="h-13 text-base" id="checkIn" min={getLocalDate()} name="checkIn" onChange={(event) => handleCheckInChange(event.target.value)} type="date" value={checkIn} />
                           </FieldContent>
                         </Field>
 
                         <Field>
                           <FieldLabel htmlFor="checkOut">Check-out</FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkOut" min={checkIn} onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
+                            <Input className="h-13 text-base" id="checkOut" min={checkIn} name="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
                           </FieldContent>
                         </Field>
                       </div>
