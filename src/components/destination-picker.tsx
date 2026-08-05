@@ -71,12 +71,14 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
   const [query, setQuery] = useState(value)
   const [choices, setChoices] = useState<Choice[]>([])
   const [loading, setLoading] = useState(false)
+  const [hasSelected, setHasSelected] = useState(false)
   const request = useRef(0)
 
   useEffect(() => setQuery(value), [value])
 
   async function find(next: string) {
     setQuery(next)
+    setHasSelected(false)
     // Keep the form usable worldwide even when Maps is slow, unavailable, or
     // has not suggested a specific place yet. A selected suggestion later
     // replaces this with Apple's resolved place and country.
@@ -119,9 +121,10 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
     onChange(searchTerm, country)
     setQuery(choice.label)
     setChoices([])
+    setHasSelected(true)
   }
 
-  const freeTextChoice: Choice | null = query.trim().length >= 2 && !loading && choices.length === 0
+  const freeTextChoice: Choice | null = query.trim().length >= 2 && !loading && !hasSelected && choices.length === 0
     ? { label: `Search near “${query.trim()}”`, city: query.trim(), country: "", searchTerm: query.trim() }
     : null
 
