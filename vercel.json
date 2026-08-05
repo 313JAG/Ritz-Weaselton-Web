@@ -9,6 +9,7 @@
     "api/search-job.js": { "maxDuration": 60 },
     "api/retry-failed.js": { "maxDuration": 60 },
     "api/run-search-code.js": { "maxDuration": 60 },
+    "api/search-code.js": { "maxDuration": 60 },
     "api/cancel-search-job.js": { "maxDuration": 10 },
     "api/queues/search-code.js": {
       "maxDuration": 300,

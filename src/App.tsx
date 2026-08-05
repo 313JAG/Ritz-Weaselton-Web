@@ -64,6 +64,7 @@ import {
   uniqueCodes,
   type CatalogCode,
   type CatalogPreset,
+  type CodeResult,
   type SearchJob,
 } from "@/lib/transform"
 import { cn } from "@/lib/utils"
@@ -285,31 +286,40 @@ export default function App() {
     setError(null)
 
     try {
-      const queuedJob = await apiFetch<SearchJob>("/api/search-jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          city: searchCity,
-          country: searchCountry,
-          checkIn: searchCheckIn,
-          checkOut: searchCheckOut,
-          codes: ["BASELINE", ...(codesOverride || selectedCodes)],
-        }),
-      })
-
-      startTransition(() => {
-        setJob(queuedJob)
-        setSelectedProperty(null)
-        setShowSearchActivity(true)
-        setActiveView("results")
-      })
-
-      void driveSearchJob(queuedJob.id)
-
-      const nextJob =
-        queuedJob.status === "completed"
-          ? queuedJob
-          : await pollSearchJob(queuedJob.id)
+      const runCodes = uniqueCodes(["BASELINE", ...(codesOverride || selectedCodes)])
+      const startedAt = new Date().toISOString()
+      const params = { city: searchCity, country: searchCountry, checkIn: searchCheckIn, checkOut: searchCheckOut, codes: runCodes }
+      const localJob: SearchJob = {
+        id: crypto.randomUUID(), status: "running", createdAt: startedAt, updatedAt: startedAt, completedAt: null,
+        params, failedCodes: [], results: [],
+        progress: { totalCodes: runCodes.length, completedCodes: 0, successfulCodes: 0, failedCodes: 0, queuedCodes: runCodes.length, workerLimit: 4 },
+        codeStates: Object.fromEntries(runCodes.map((code) => [code, { status: "queued" as const, attempts: 0, error: null }])),
+      }
+      startTransition(() => { setJob(localJob); setSelectedProperty(null); setShowSearchActivity(true); setActiveView("results") })
+      const results: CodeResult[] = []
+      let nextIndex = 0
+      const worker = async () => {
+        while (true) {
+          const index = nextIndex++
+          const code = runCodes[index]
+          if (!code) return
+          localJob.codeStates![code] = { status: "running", attempts: 1, error: null }
+          try {
+            results[index] = await apiFetch<CodeResult>("/api/search-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...params, code }) })
+          } catch (error) {
+            results[index] = { code, success: false, error: error instanceof Error ? error.message : "Request failed", hotels: [], url: "" }
+          }
+          const result = results[index]
+          localJob.codeStates![code] = { status: result.success || result.error === "NO_RESULTS" ? "completed" : "failed", attempts: 1, error: result.success || result.error === "NO_RESULTS" ? null : result.error }
+          const completed = results.filter(Boolean)
+          localJob.results = completed
+          localJob.updatedAt = new Date().toISOString()
+          localJob.progress = { ...localJob.progress, completedCodes: completed.length, successfulCodes: completed.filter((item) => item.success || item.error === "NO_RESULTS").length, failedCodes: completed.filter((item) => !item.success && item.error !== "NO_RESULTS").length, queuedCodes: runCodes.length - completed.length }
+          setJob({ ...localJob, results: [...completed], codeStates: { ...localJob.codeStates } })
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(4, runCodes.length) }, worker))
+      const nextJob: SearchJob = { ...localJob, status: "completed", completedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), results: results.filter(Boolean), failedCodes: results.filter((item) => !item.success && item.error !== "NO_RESULTS").map((item) => item.code), progress: { ...localJob.progress, completedCodes: runCodes.length, queuedCodes: 0 } }
       const nextProperties = summarizeProperties(nextJob.results, codeCompanies)
       const firstProperty = nextProperties[0]?.key || null
       const nextHistory = [buildHistoryEntry(nextJob), ...history.filter((entry) => entry.id !== nextJob.id)].slice(0, 10)
