@@ -484,8 +484,8 @@ export default function App() {
       <div className="rw-workspace mx-auto grid min-h-screen w-full max-w-[1680px] lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="rw-rail">
           <button className="rw-brand" onClick={() => setActiveView("search")} type="button">
-            <img alt="Ritz-Weaselton" className="h-14 w-auto object-contain" src={logo} />
-            <span>Rate intelligence<br />for better stays.</span>
+            <img alt="Ritz-Weaselton crest" className="rw-brand-logo" src={logo} />
+            <span className="rw-brand-copy"><strong>Ritz-Weaselton</strong><small>Rate intelligence for better stays.</small></span>
           </button>
           <nav aria-label="Ritz-Weaselton sections" className="rw-nav">
             <Button className="rw-nav-item" onClick={() => setActiveView("search")} variant={activeView === "search" ? "default" : "ghost"}>
