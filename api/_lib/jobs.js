@@ -4,7 +4,7 @@ const { enqueueCode } = require('./search-queue');
 // large burst from the request handler can exhaust its 60-second budget
 // before a job ID reaches the browser; workers keep this pool full after the
 // immediate response.
-const WORKER_CONCURRENCY = 4;
+const WORKER_CONCURRENCY = 1;
 
 function assertConfigured() {
   if (process.env.VERCEL && !hasRedis()) {
@@ -15,9 +15,10 @@ function assertConfigured() {
 async function startSearch(params) {
   assertConfigured();
   const job = await createJob(params);
-  await Promise.all(job.params.codes.slice(0, WORKER_CONCURRENCY).map((code, index) =>
-    enqueueCode({ jobId: job.id, code, index })
-  ));
+  // Queue one durable first task only. This keeps the browser-facing request
+  // independent of a large queue publish burst; each worker queues the next
+  // pending code after it records its result.
+  await enqueueCode({ jobId: job.id, code: job.params.codes[0], index: 0 });
   return job;
 }
 

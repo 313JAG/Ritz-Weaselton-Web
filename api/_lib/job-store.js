@@ -112,7 +112,7 @@ function serialize(job, resultEntries) {
       failedCodes: failedCodes.length,
       runningCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'running'),
       queuedCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'queued').length,
-      workerLimit: job.workerLimit || 4,
+      workerLimit: job.workerLimit || 1,
     },
     failedCodes,
     codeStates: job.codeStates,
@@ -140,7 +140,7 @@ async function createJob(params) {
     updatedAt: now,
     completedAt: null,
     params: { ...params, codes: codeOrder },
-    workerLimit: 4,
+    workerLimit: 1,
     codeOrder,
     codeStates: Object.fromEntries(codeOrder.map((code) => [code, { status: 'queued', attempts: 0, error: null }])),
   };
@@ -238,30 +238,3 @@ async function cancelJob(id) {
     return value;
   });
   return hydrate(job);
-}
-
-async function resetFailed(id) {
-  const job = await updateJob(id, (value) => {
-    const failed = value.codeOrder.filter((code) => value.codeStates[code]?.status === 'failed');
-    if (!failed.length) throw new Error('This search has no failed codes to retry');
-    for (const code of failed) value.codeStates[code] = { status: 'queued', attempts: 0, error: null };
-    value.status = 'queued';
-    value.message = `Retrying ${failed.length} failed codes`;
-    value.completedAt = null;
-    return value;
-  });
-  return { job: await hydrate(job), codes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'queued') };
-}
-
-module.exports = {
-  JOB_TTL_SECONDS,
-  createJob,
-  getJob,
-  getJobRecord,
-  markRunning,
-  storeResult,
-  cancelJob,
-  resetFailed,
-  hasRedis,
-  readJsonMany,
-};
