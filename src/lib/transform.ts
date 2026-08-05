@@ -249,7 +249,17 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
       if (left.available !== right.available) return Number(right.available) - Number(left.available)
       return (left.price ?? Number.POSITIVE_INFINITY) - (right.price ?? Number.POSITIVE_INFINITY)
     })
-    const best = property.rates.find((rate) => rate.available)
+    // Keep the standard rate pinned at the top of the detail matrix, but do
+    // not let that presentation order choose the winner. The comparison card
+    // must surface the lowest available selected code; standard is only the
+    // fallback when no selected code returns a price.
+    const pricedCodes = property.rates.filter((rate) => rate.available && rate.code !== "BASELINE")
+    const best = (pricedCodes.length ? pricedCodes : property.rates.filter((rate) => rate.available))
+      .reduce<typeof property.rates[number] | null>((winner, rate) =>
+        !winner || (rate.price ?? Number.POSITIVE_INFINITY) < (winner.price ?? Number.POSITIVE_INFINITY)
+          ? rate
+          : winner,
+      null)
     property.bestCode = best?.code ?? null
     property.bestCodeLabel = best?.label ?? null
     property.bestPrice = best?.price ?? null
