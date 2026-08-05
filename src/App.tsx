@@ -471,13 +471,13 @@ export default function App() {
   const topPresets = presets.slice(0, 5)
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(248,239,224,0.92),_rgba(236,227,213,0.98)_38%,_rgba(230,220,204,1)_100%)] text-foreground">
+    <div className="rw-app-shell min-h-screen text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1480px] flex-col gap-6 px-4 py-5 md:px-6 md:py-7">
-        <header className="flex flex-col gap-4 border border-border/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(252,249,244,0.94))] p-4 shadow-[0_20px_60px_rgba(69,46,23,0.08)] md:flex-row md:items-center md:justify-between">
+        <header className="rw-topbar flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <img
               alt="Ritz-Weaselton"
-              className="h-22 w-auto shrink-0 object-contain mix-blend-multiply saturate-75 contrast-105"
+              className="h-16 w-auto shrink-0 object-contain brightness-0 invert"
               src={logo}
             />
             <div className="min-w-0">
@@ -528,14 +528,14 @@ export default function App() {
                   <Badge variant="secondary">Preset-first</Badge>
                 </div>
                 <h2 className="font-heading text-5xl leading-[0.95] tracking-tight text-foreground md:text-6xl">
-                  Search smarter.
+                  Find the rate worth booking.
                 </h2>
                 <p className="mx-auto max-w-2xl text-base text-muted-foreground md:text-lg">
-                  Enter a destination, set your dates, choose the codes you want, and let the results view handle the heavier detail.
+                  Live Marriott comparisons, without the spreadsheet.
                 </p>
               </div>
 
-              <Card className="mx-auto w-full max-w-4xl border-border/70 bg-background shadow-[0_28px_80px_rgba(69,46,23,0.11)]">
+              <Card className="rw-search-card mx-auto w-full max-w-4xl">
                 <CardContent className="grid gap-6 px-5 py-5 md:px-6 md:py-6">
                   <form className="grid gap-6" onSubmit={handleSearchSubmit}>
                     <FieldGroup>
