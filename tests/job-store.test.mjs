@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import jobStore from '../api/_lib/job-store.js'
 import worker from '../api/_lib/search-worker.js'
+import { extractRateInfo } from '../v2/lib/marriott-api-runner.js'
 
 const { createJob, getJob, storeResult, resetFailed, cancelJob } = jobStore
 const { shouldRetry } = worker
@@ -33,5 +34,30 @@ describe('durable search job state', () => {
     expect(job.status).toBe('queued')
     expect(job.progress.totalCodes).toBe(357)
     expect(job.progress.completedCodes).toBe(0)
+  })
+})
+
+describe('Marriott pricing integrity', () => {
+  it('uses Marriott’s complete nightly amount without dividing it by the stay length twice', () => {
+    const rate = extractRateInfo([
+      {
+        rateModes: {
+          lowestAverageRate: {
+            amount: { amount: 26690, currency: 'USD', decimalPoint: 2 },
+            fees: { amount: 75, currency: 'USD', decimalPoint: 2 },
+            taxes: { amount: 4671, currency: 'USD', decimalPoint: 2 },
+            totalAmount: { amount: 31436, currency: 'USD', decimalPoint: 2 },
+          },
+        },
+      },
+    ], { checkIn: '2026-08-07', checkOut: '2026-08-09' })
+
+    expect(rate).toMatchObject({
+      price: 314.36,
+      totalPrice: 628.72,
+      taxes: 93.42,
+      fees: 1.5,
+      currency: 'USD',
+    })
   })
 })
