@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { PropertyMap } from "@/components/property-map"
+import { DestinationPicker } from "@/components/destination-picker"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,7 +63,7 @@ import {
   type SearchJob,
 } from "@/lib/transform"
 import { cn } from "@/lib/utils"
-import { COUNTRIES, DESTINATIONS, countryName, getLocalDate } from "@/lib/destinations"
+import { DESTINATIONS, getLocalDate } from "@/lib/destinations"
 import logo from "../logo.jpg"
 
 type BootstrapPayload = {
@@ -535,39 +536,12 @@ export default function App() {
                 <CardContent className="grid gap-6 px-5 py-5 md:px-6 md:py-6">
                   <form className="grid gap-6" onSubmit={handleSearchSubmit}>
                     <FieldGroup>
-                          <div className="grid gap-4 md:grid-cols-[1.6fr_0.6fr]">
+                          <div className="grid gap-4">
                         <Field>
                           <FieldLabel htmlFor="city">Where are you staying?</FieldLabel>
                           <FieldContent>
-                            <Input
-                              className="h-13 text-base md:text-lg"
-                              id="city"
-                              list="destination-options"
-                              name="city"
-                              onChange={(event) => handleDestinationChange(event.target.value)}
-                              placeholder="Las Vegas"
-                              value={city}
-                            />
-                            <datalist id="destination-options">
-                              {DESTINATIONS.map(([destination, destinationCountry]) => (
-                                <option key={`${destination}-${destinationCountry}`} value={destination}>{countryName(destinationCountry)}</option>
-                              ))}
-                            </datalist>
-                          </FieldContent>
-                        </Field>
-
-                        <Field>
-                          <FieldLabel htmlFor="country">Country</FieldLabel>
-                          <FieldContent>
-                            <select
-                              className="h-13 w-full rounded-md border border-input bg-background px-3 text-base md:text-lg"
-                              id="country"
-                              name="country"
-                              value={country}
-                              onChange={(event) => setCountry(event.target.value)}
-                            >
-                              {COUNTRIES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
-                            </select>
+                            <DestinationPicker onChange={(nextCity, nextCountry) => { setCity(nextCity); setCountry(nextCountry) }} value={city} />
+                            <input name="country" type="hidden" value={country} />
                           </FieldContent>
                         </Field>
                       </div>
