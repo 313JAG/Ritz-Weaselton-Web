@@ -1,3 +1,4 @@
+     267 api/_lib/job-store.js
 const { randomUUID } = require('node:crypto');
 
 const JOB_TTL_SECONDS = 24 * 60 * 60;
@@ -238,3 +239,30 @@ async function cancelJob(id) {
     return value;
   });
   return hydrate(job);
+}
+
+async function resetFailed(id) {
+  const job = await updateJob(id, (value) => {
+    const failed = value.codeOrder.filter((code) => value.codeStates[code]?.status === 'failed');
+    if (!failed.length) throw new Error('This search has no failed codes to retry');
+    for (const code of failed) value.codeStates[code] = { status: 'queued', attempts: 0, error: null };
+    value.status = 'queued';
+    value.message = `Retrying ${failed.length} failed codes`;
+    value.completedAt = null;
+    return value;
+  });
+  return { job: await hydrate(job), codes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'queued') };
+}
+
+module.exports = {
+  JOB_TTL_SECONDS,
+  createJob,
+  getJob,
+  getJobRecord,
+  markRunning,
+  storeResult,
+  cancelJob,
+  resetFailed,
+  hasRedis,
+  readJsonMany,
+};
