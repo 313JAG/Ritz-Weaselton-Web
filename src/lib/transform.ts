@@ -17,6 +17,9 @@ export type HotelResult = {
   name: string
   price: number | string
   currency: string | null
+  totalPrice?: number | string
+  taxes?: number | null
+  fees?: number | null
   rating: number | null
   reviewCount: number | null
   distanceMeters?: number | null
@@ -59,7 +62,10 @@ export type SearchJob = {
     successfulCodes: number
     failedCodes: number
     runningCodes?: string[]
+    queuedCodes?: number
+    workerLimit?: number
   }
+  codeStates?: Record<string, { status: "queued" | "running" | "completed" | "failed"; attempts: number; error: string | null }>
   results: CodeResult[]
 }
 
@@ -89,6 +95,9 @@ export type PropertySummary = {
     code: string
     label: string
     price: number | null
+    totalPrice?: number | null
+    taxes?: number | null
+    fees?: number | null
     currency: string | null
     available: boolean
     bookingUrl: string
@@ -201,6 +210,9 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
         code: result.code,
         label: codeLabel(result.code),
         price: typeof hotel.price === "number" ? hotel.price : null,
+        totalPrice: typeof hotel.totalPrice === "number" ? hotel.totalPrice : null,
+        taxes: hotel.taxes ?? null,
+        fees: hotel.fees ?? null,
         currency: hotel.currency || null,
         available: typeof hotel.price === "number",
         bookingUrl: result.url,
@@ -221,6 +233,9 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
         code: result.code,
         label: codeLabel(result.code),
         price: null,
+        totalPrice: null,
+        taxes: null,
+        fees: null,
         currency: property.currency,
         available: false,
         bookingUrl: result.url,
