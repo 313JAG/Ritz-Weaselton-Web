@@ -33,6 +33,12 @@ describe("property comparison", () => {
       { code: "GOV", available: false, error: "TIMEOUT" },
     ])
     expect(properties.find((property) => property.propertyId === "B")?.rates).toHaveLength(3)
+    expect(properties.find((property) => property.propertyId === "A")).toMatchObject({
+      bestCode: "AAA",
+      bestPrice: 180,
+      baselinePrice: 220,
+      savings: 40,
+    })
   })
 })
 
