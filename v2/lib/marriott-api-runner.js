@@ -344,7 +344,9 @@ function buildPayload(params, offset = 0) {
           rateRequestTypes: code && code !== 'BASELINE' ? [{ type: 'CLUSTER', value: code }] : [],
           quantity: 1,
           customerId: '',
-          includeTaxesAndFees: false,
+          // Request Marriott's all-in figure. We display this only when the
+          // response supplies a total; it avoids presenting a pre-tax teaser.
+          includeTaxesAndFees: true,
           includeUnavailableProperties: true,
         },
         facets: cloneValue(SEARCH_FACETS),
@@ -395,7 +397,8 @@ function extractRateInfo(rates) {
   const withAmount = rates.find((rate) => {
     const rateModes = rate?.rateModes || {};
     return Boolean(
-      rateModes.lowestAverageRate?.amountPlusMandatoryFees ||
+      rateModes.lowestAverageRate?.totalAmount ||
+        rateModes.lowestAverageRate?.amountPlusMandatoryFees ||
         rateModes.lowestAverageRate?.amount ||
         rateModes.cashAndPointsPerUnit?.amountPlusMandatoryFees ||
         rateModes.cashAndPointsPerUnit?.amount
@@ -404,6 +407,7 @@ function extractRateInfo(rates) {
 
   const rateModes = withAmount?.rateModes || {};
   const amount =
+    rateModes.lowestAverageRate?.totalAmount ||
     rateModes.lowestAverageRate?.amountPlusMandatoryFees ||
     rateModes.lowestAverageRate?.amount ||
     rateModes.cashAndPointsPerUnit?.amountPlusMandatoryFees ||
