@@ -47,6 +47,26 @@ function fallback(query: string): Choice[] {
   return DESTINATIONS.filter(([city]) => city.toLowerCase().includes(query.toLowerCase())).slice(0, 6).map(([city, country]) => ({ label: `${city}, ${country}`, city, country, searchTerm: city }))
 }
 
+function choicesFromAutocomplete(results: any[], query: string): Choice[] {
+  return results.map((result: any) => ({
+    label: (result.displayLines || [result.name, result.locality]).filter(Boolean).join(", "),
+    city: result.locality || result.name || query,
+    country: result.countryCode || "US",
+    searchTerm: result.name || result.locality || query,
+    raw: result,
+  }))
+}
+
+function choicesFromPlaces(places: any[], query: string): Choice[] {
+  return places.map((place: any) => ({
+    label: [place.name, place.locality || place.formattedAddress].filter(Boolean).join(", "),
+    city: place.locality || place.name || query,
+    country: place.countryCode || "US",
+    searchTerm: place.name || place.locality || query,
+    raw: place,
+  }))
+}
+
 export function DestinationPicker({ value, onChange }: { value: string; onChange: (city: string, country: string) => void }) {
   const [query, setQuery] = useState(value)
   const [choices, setChoices] = useState<Choice[]>([])
@@ -64,15 +84,17 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
       const search = await mapkitSearch()
       const data = await search.autocomplete(next)
       if (token !== request.current) return
-      setChoices((data.results || []).slice(0, 6).map((result: any) => ({
-        label: (result.displayLines || [result.name, result.locality]).filter(Boolean).join(", "),
-        city: result.locality || result.name || next,
-        country: result.countryCode || "US",
-        // Marriott can resolve a landmark directly; retain it instead of
-        // silently widening a POI selection back to its entire city.
-        searchTerm: result.name || result.locality || next,
-        raw: result,
-      })))
+      const autocompleteChoices = choicesFromAutocomplete(data.results || [], next)
+      // Apple autocomplete can omit a specific venue even though the direct
+      // place search knows it (for example, Oracle Park). Supplement sparse
+      // suggestions with the full POI/place lookup.
+      const placeChoices = autocompleteChoices.length >= 3
+        ? []
+        : choicesFromPlaces((await search.search(next)).places || [], next)
+      const deduped = [...autocompleteChoices, ...placeChoices].filter((choice, index, all) =>
+        Boolean(choice.label) && all.findIndex((other) => other.label === choice.label) === index,
+      )
+      setChoices(deduped.slice(0, 6))
     } catch {
       if (token === request.current) setChoices(fallback(next))
     } finally {
