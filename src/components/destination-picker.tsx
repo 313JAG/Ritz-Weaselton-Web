@@ -13,6 +13,21 @@ async function mapkitSearch() {
   return new mapkit.Search({ includeAddresses: true, includePointsOfInterest: true, includeQueries: false })
 }
 
+function requestPlaces(search: any, query: any): Promise<any> {
+  // MapKit JS 5 (the same library that renders our map) delivers both search
+  // and autocomplete through callbacks. Wrap that public API so a failed
+  // service request reaches the picker rather than being mistaken for no POIs.
+  return new Promise((resolve, reject) => {
+    search.search(query, (error: Error | null, data?: any) => error ? reject(error) : resolve(data || {}))
+  })
+}
+
+function requestAutocomplete(search: any, query: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    search.autocomplete(query, (error: Error | null, data?: any) => error ? reject(error) : resolve(data || {}))
+  })
+}
+
 function fallback(query: string): Choice[] {
   return DESTINATIONS.filter(([city]) => city.toLowerCase().includes(query.toLowerCase())).slice(0, 6).map(([city, country]) => ({ label: `${city}, ${country}`, city, country, searchTerm: city }))
 }
@@ -58,12 +73,12 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
     setLoading(true)
     try {
       const search = await mapkitSearch()
-      const data = await search.autocomplete(next)
+      const data = await requestAutocomplete(search, next)
       if (token !== request.current) return
       const autocompleteChoices = choicesFromAutocomplete(data.results || [], next)
       // Autocomplete often ranks cities ahead of a named venue. Always merge
       // the direct place lookup and show those precise POI results first.
-      const placeChoices = choicesFromPlaces((await search.search(next)).places || [], next)
+      const placeChoices = choicesFromPlaces((await requestPlaces(search, next)).places || [], next)
       const deduped = [...placeChoices, ...autocompleteChoices].filter((choice, index, all) =>
         Boolean(choice.label) && all.findIndex((other) => other.label === choice.label) === index,
       )
@@ -81,7 +96,7 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
     let searchTerm = choice.searchTerm
     try {
       if (choice.raw) {
-        const response = await (await mapkitSearch()).search(choice.raw)
+        const response = await requestPlaces(await mapkitSearch(), choice.raw)
         const place = response.places?.[0]
         city = place?.locality || city
         country = place?.countryCode || country
