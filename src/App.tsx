@@ -483,8 +483,8 @@ export default function App() {
 
   return (
     <div className="rw-app-shell min-h-screen text-foreground">
-      <div className="rw-workspace mx-auto grid min-h-screen w-full max-w-[1680px] lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="rw-rail">
+      <div className="rw-workspace min-h-screen w-full">
+        <header className="rw-topbar">
           <button className="rw-brand" onClick={() => setActiveView("search")} type="button">
             <img alt="Ritz-Weaselton crest" className="rw-brand-logo" src={logo} />
             <span className="rw-brand-copy"><strong>Ritz-Weaselton</strong><small>Rate intelligence for better stays.</small></span>
@@ -507,7 +507,7 @@ export default function App() {
             <SparkleIcon weight="fill" />
             <p>Rates are requested live from Marriott. Your codes stay in this browser.</p>
           </div>
-        </aside>
+        </header>
 
         <main className="rw-stage">
 
