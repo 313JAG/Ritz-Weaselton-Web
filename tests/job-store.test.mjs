@@ -38,7 +38,7 @@ describe('durable search job state', () => {
 })
 
 describe('Marriott pricing integrity', () => {
-  it('uses Marriott’s complete nightly amount without dividing it by the stay length twice', () => {
+  it('uses Marriott’s advertised nightly amount and derives the displayed stay quote from it', () => {
     const rate = extractRateInfo([
       {
         rateModes: {
@@ -53,10 +53,10 @@ describe('Marriott pricing integrity', () => {
     ], { checkIn: '2026-08-07', checkOut: '2026-08-09' })
 
     expect(rate).toMatchObject({
-      price: 314.36,
-      totalPrice: 628.72,
-      taxes: 93.42,
-      fees: 1.5,
+      price: 266.9,
+      totalPrice: 533.8,
+      taxes: 46.71,
+      fees: 0.75,
       currency: 'USD',
     })
   })
