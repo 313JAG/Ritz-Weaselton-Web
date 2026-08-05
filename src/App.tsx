@@ -190,6 +190,15 @@ export default function App() {
     ? properties.find((property) => property.key === selectedProperty) || null
     : null
   const visibleSearchCodes = (job?.params.codes.filter((code) => code !== "BASELINE") || selectedCodes)
+  const codeProgress = useMemo(() => {
+    const finished = new Map((job?.results || []).map((result) => [result.code, result]))
+    const running = new Set(job?.progress?.runningCodes || [])
+    return (job?.params.codes || []).filter((code) => code !== "BASELINE").map((code) => {
+      const result = finished.get(code)
+      if (result) return { code, status: result.success || result.error === "NO_RESULTS" ? "done" : "failed" }
+      return { code, status: running.has(code) ? "running" : "queued" }
+    })
+  }, [job])
 
   useEffect(() => {
     if (!selectedProperty) return
@@ -544,16 +553,16 @@ export default function App() {
                     <FieldGroup>
                       <div className="grid gap-4 md:grid-cols-2">
                         <Field>
-                          <FieldLabel htmlFor="checkIn">Check-in</FieldLabel>
+                          <FieldLabel htmlFor="checkIn">Check-in <span className="font-normal text-muted-foreground">(DD/MM/YYYY)</span></FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkIn" min={getLocalDate()} name="checkIn" onChange={(event) => handleCheckInChange(event.target.value)} type="date" value={checkIn} />
+                            <Input className="h-13 text-base" id="checkIn" lang="en-AU" min={getLocalDate()} name="checkIn" onChange={(event) => handleCheckInChange(event.target.value)} type="date" value={checkIn} />
                           </FieldContent>
                         </Field>
 
                         <Field>
-                          <FieldLabel htmlFor="checkOut">Check-out</FieldLabel>
+                          <FieldLabel htmlFor="checkOut">Check-out <span className="font-normal text-muted-foreground">(DD/MM/YYYY)</span></FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkOut" min={checkIn} name="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
+                            <Input className="h-13 text-base" id="checkOut" lang="en-AU" min={checkIn} name="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
                           </FieldContent>
                         </Field>
                       </div>
@@ -722,14 +731,14 @@ export default function App() {
                           </Button>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-border/70">
-                          <div className="h-full w-2/3 animate-pulse rounded-full bg-primary" />
+                          <div className="h-full animate-pulse rounded-full bg-primary transition-all" style={{ width: `${Math.max(3, Math.round(((job.progress?.completedCodes || 0) / Math.max(1, job.progress?.totalCodes || 1)) * 100))}%` }} />
                         </div>
                         {showSearchActivity ? (
-                          <ScrollArea className="h-28 rounded-xl border border-border/70 bg-background/80">
+                          <ScrollArea className="h-36 rounded-xl border border-border/70 bg-background/80">
                             <div className="flex flex-wrap gap-2 p-3">
-                              {visibleSearchCodes.map((code) => (
-                                <Badge key={code} variant="secondary">
-                                  {codeLabel(code)}
+                              {codeProgress.map(({ code, status }) => (
+                                <Badge className={cn(status === "done" && "bg-emerald-100 text-emerald-900", status === "running" && "animate-pulse bg-primary text-primary-foreground", status === "failed" && "bg-destructive/15 text-destructive")} key={code} variant={status === "queued" ? "secondary" : "default"}>
+                                  {status === "done" ? "✓ " : status === "running" ? "… " : status === "failed" ? "! " : "○ "}{codeLabel(code)}
                                 </Badge>
                               ))}
                             </div>
