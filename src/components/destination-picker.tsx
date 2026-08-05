@@ -85,13 +85,10 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
       const data = await search.autocomplete(next)
       if (token !== request.current) return
       const autocompleteChoices = choicesFromAutocomplete(data.results || [], next)
-      // Apple autocomplete can omit a specific venue even though the direct
-      // place search knows it (for example, Oracle Park). Supplement sparse
-      // suggestions with the full POI/place lookup.
-      const placeChoices = autocompleteChoices.length >= 3
-        ? []
-        : choicesFromPlaces((await search.search(next)).places || [], next)
-      const deduped = [...autocompleteChoices, ...placeChoices].filter((choice, index, all) =>
+      // Autocomplete often ranks cities ahead of a named venue. Always merge
+      // the direct place lookup and show those precise POI results first.
+      const placeChoices = choicesFromPlaces((await search.search(next)).places || [], next)
+      const deduped = [...placeChoices, ...autocompleteChoices].filter((choice, index, all) =>
         Boolean(choice.label) && all.findIndex((other) => other.label === choice.label) === index,
       )
       setChoices(deduped.slice(0, 6))
