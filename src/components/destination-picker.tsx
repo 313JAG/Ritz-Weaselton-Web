@@ -119,13 +119,13 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
       }
     } catch { /* autocomplete already provides a usable destination */ }
     onChange(searchTerm, country)
-    setQuery(choice.label)
+    setQuery(searchTerm)
     setChoices([])
     setHasSelected(true)
   }
 
   const freeTextChoice: Choice | null = query.trim().length >= 2 && !loading && !hasSelected && choices.length === 0
-    ? { label: `Search near “${query.trim()}”`, city: query.trim(), country: "", searchTerm: query.trim() }
+    ? { label: query.trim(), city: query.trim(), country: "", searchTerm: query.trim() }
     : null
 
   return <div className="relative">
