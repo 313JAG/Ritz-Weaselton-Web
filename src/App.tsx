@@ -63,7 +63,7 @@ import {
   type SearchJob,
 } from "@/lib/transform"
 import { cn } from "@/lib/utils"
-import { DESTINATIONS, getLocalDate } from "@/lib/destinations"
+import { getLocalDate } from "@/lib/destinations"
 import logo from "../logo.jpg"
 
 type BootstrapPayload = {
@@ -382,12 +382,6 @@ export default function App() {
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Could not cancel search")
     }
-  }
-
-  function handleDestinationChange(value: string) {
-    setCity(value)
-    const match = DESTINATIONS.find(([destination]) => destination.toLowerCase() === value.trim().toLowerCase())
-    if (match) setCountry(match[1])
   }
 
   function handleCheckInChange(value: string) {
