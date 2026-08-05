@@ -3,7 +3,7 @@ const { getJobRecord, markRunning, storeResult } = require('./job-store');
 const { enqueueCode } = require('./search-queue');
 
 const MAX_ATTEMPTS = 3;
-const WORKER_CONCURRENCY = 3;
+const WORKER_CONCURRENCY = 24;
 const TRANSIENT_ERRORS = new Set(['TIMEOUT', 'NETWORK_ERROR']);
 
 function shouldRetry(result, attempts) {
