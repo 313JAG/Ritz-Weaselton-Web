@@ -1,6 +1,6 @@
 const { createJob, getJob, cancelJob, resetFailed, hasRedis } = require('./job-store');
 const { enqueueCode } = require('./search-queue');
-const WORKER_CONCURRENCY = 3;
+const WORKER_CONCURRENCY = 24;
 
 function assertConfigured() {
   if (process.env.VERCEL && !hasRedis()) {
