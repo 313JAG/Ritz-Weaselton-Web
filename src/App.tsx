@@ -476,6 +476,8 @@ export default function App() {
   }
 
   const topPresets = presets.slice(0, 5)
+  const legacyJob = job as SearchJob
+  const legacySelectedProperty = selectedPropertySummary as NonNullable<typeof selectedPropertySummary>
 
   return (
     <div className="rw-app-shell min-h-screen text-foreground">
@@ -668,7 +670,7 @@ export default function App() {
           />
         ) : null}
 
-        {false ? (
+        {false ? (() => { const job = legacyJob; const selectedPropertySummary = legacySelectedProperty; return (
           <div className="grid gap-6">
             <Card className="border-border/70 bg-background/82 shadow-[0_18px_50px_rgba(69,46,23,0.08)]">
               <CardHeader className="gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -1049,7 +1051,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        ) : null}
+        ) })() : null}
 
         {activeView === "library" ? (
           <div className="grid items-start gap-6 xl:grid-cols-[0.8fr_1.2fr]">
