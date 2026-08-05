@@ -121,8 +121,12 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
     setChoices([])
   }
 
+  const freeTextChoice: Choice | null = query.trim().length >= 2 && !loading && choices.length === 0
+    ? { label: `Search near “${query.trim()}”`, city: query.trim(), country: "", searchTerm: query.trim() }
+    : null
+
   return <div className="relative">
     <div className="relative"><MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input name="city" type="hidden" value={value} /><Input className="h-14 pl-10 pr-10 text-base md:text-lg" id="city" onChange={(event) => void find(event.target.value)} placeholder="City, landmark, airport, or neighbourhood" value={query} />{loading ? <SpinnerGapIcon className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}</div>
-    {choices.length ? <div className="absolute z-20 mt-2 grid w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-xl">{choices.map((choice) => <Button className="justify-start whitespace-normal px-3 py-3 text-left" key={`${choice.label}-${choice.city}`} onClick={() => void select(choice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{choice.label}</Button>)}</div> : null}
+    {choices.length || freeTextChoice ? <div className="absolute z-20 mt-2 grid w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-xl">{choices.map((choice) => <Button className="justify-start whitespace-normal px-3 py-3 text-left" key={`${choice.label}-${choice.city}`} onClick={() => void select(choice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{choice.label}</Button>)}{freeTextChoice ? <Button className="justify-start whitespace-normal px-3 py-3 text-left" onClick={() => void select(freeTextChoice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{freeTextChoice.label}</Button> : null}</div> : null}
   </div>
 }
