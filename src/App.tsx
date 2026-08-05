@@ -191,6 +191,9 @@ export default function App() {
     : null
   const visibleSearchCodes = (job?.params.codes.filter((code) => code !== "BASELINE") || selectedCodes)
   const codeProgress = useMemo(() => {
+    if (job?.codeStates) return Object.entries(job.codeStates)
+      .filter(([code]) => code !== "BASELINE")
+      .map(([code, state]) => ({ code, status: state.status === "completed" ? "done" : state.status === "failed" ? "failed" : state.status }))
     const finished = new Map((job?.results || []).map((result) => [result.code, result]))
     const running = new Set(job?.progress?.runningCodes || [])
     return (job?.params.codes || []).filter((code) => code !== "BASELINE").map((code) => {
@@ -827,7 +830,7 @@ export default function App() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">All checked prices</p>
-                        <p className="text-sm text-muted-foreground">Standard rate is pinned first; other available rates are ranked by price.</p>
+                        <p className="text-sm text-muted-foreground">Nightly all-in rate. Stay total, taxes, and mandatory fees are shown when Marriott returns them.</p>
                       </div>
                       <Button onClick={() => setShowUnavailableRates((value) => !value)} size="sm" variant="outline">
                         {showUnavailableRates ? "Hide unavailable" : "Show all codes"}
@@ -836,7 +839,7 @@ export default function App() {
                     <div className="max-h-[28rem] overflow-auto rounded-lg border border-border/60 bg-background">
                       <Table>
                         <TableHeader>
-                          <TableRow><TableHead>Code</TableHead><TableHead>Company</TableHead><TableHead>Price</TableHead><TableHead>vs standard</TableHead><TableHead>Status</TableHead><TableHead /></TableRow>
+                          <TableRow><TableHead>Code</TableHead><TableHead>Company</TableHead><TableHead>Nightly all-in</TableHead><TableHead>Stay total</TableHead><TableHead>vs standard</TableHead><TableHead>Status</TableHead><TableHead /></TableRow>
                         </TableHeader>
                         <TableBody>
                           {selectedPropertySummary.rates.filter((rate) => showUnavailableRates || rate.available || rate.code === "BASELINE").map((rate) => (
@@ -844,6 +847,7 @@ export default function App() {
                               <TableCell className="font-medium">{rate.label}</TableCell>
                               <TableCell>{rate.company}</TableCell>
                               <TableCell>{rate.available ? formatCurrency(rate.price, rate.currency) : "—"}</TableCell>
+                              <TableCell>{rate.available ? formatCurrency(rate.totalPrice ?? null, rate.currency) : "—"}</TableCell>
                               <TableCell>{rate.available && selectedPropertySummary.baselinePrice !== null && rate.price !== null ? formatCurrency(Math.max(selectedPropertySummary.baselinePrice - rate.price, 0), rate.currency) : "—"}</TableCell>
                               <TableCell>{rate.available ? "Available" : rate.error || "Unavailable"}</TableCell>
                               <TableCell>{rate.available && rate.bookingUrl ? <Button asChild size="sm" variant="outline"><a href={rate.bookingUrl} rel="noreferrer" target="_blank">Book</a></Button> : null}</TableCell>
