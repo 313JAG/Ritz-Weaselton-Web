@@ -60,11 +60,14 @@ async function readJson(key) {
 async function readJsonMany(keys) {
   if (!keys.length) return [];
   if (!hasRedis()) return keys.map((key) => fallback().get(key) || null);
-  const values = [];
+  const keyBatches = [];
   for (let index = 0; index < keys.length; index += RESULT_READ_BATCH_SIZE) {
-    const batch = await command(['MGET', ...keys.slice(index, index + RESULT_READ_BATCH_SIZE)]);
-    values.push(...(batch || []));
+    keyBatches.push(keys.slice(index, index + RESULT_READ_BATCH_SIZE));
   }
+  // Each request stays below Upstash's response limit, while parallel reads
+  // keep the progress endpoint well inside its function duration.
+  const batches = await Promise.all(keyBatches.map((batch) => command(['MGET', ...batch])));
+  const values = batches.flatMap((batch) => batch || []);
   return values.map((value) => value ? JSON.parse(value) : null);
 }
 
