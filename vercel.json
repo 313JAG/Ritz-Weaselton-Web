@@ -6,7 +6,7 @@
   "cleanUrls": true,
   "functions": {
     "api/search-jobs.js": { "maxDuration": 60 },
-    "api/search-job.js": { "maxDuration": 10 },
+    "api/search-job.js": { "maxDuration": 60 },
     "api/retry-failed.js": { "maxDuration": 60 },
     "api/cancel-search-job.js": { "maxDuration": 10 },
     "api/queues/search-code.js": {
