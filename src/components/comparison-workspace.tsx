@@ -12,6 +12,11 @@ import { formatCurrency, type PropertySummary, type SearchJob } from "@/lib/tran
 
 type CodeProgress = { code: string; status: string }
 
+function formatAustralianDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-")
+  return year && month && day ? `${day}/${month}/${year}` : isoDate
+}
+
 type Props = {
   job: SearchJob | null
   properties: PropertySummary[]
@@ -48,7 +53,7 @@ export function ComparisonWorkspace({
         <div>
           <p className="rw-eyebrow">Comparison desk</p>
           <h2>{job.params.city}<span>, {job.params.country}</span></h2>
-          <p>{job.params.checkIn} → {job.params.checkOut} · {properties.length} properties found</p>
+          <p>{formatAustralianDate(job.params.checkIn)} → {formatAustralianDate(job.params.checkOut)} · {properties.length} properties found</p>
         </div>
         <div className="rw-results-actions">
           <Badge>{job.params.codes.length - 1} codes</Badge>
