@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-type Choice = { label: string; city: string; country: string; raw?: any }
+type Choice = { label: string; city: string; country: string; searchTerm: string; raw?: any }
 
 async function mapkitSearch() {
   if (!window.mapkit) {
@@ -40,11 +40,11 @@ async function mapkitSearch() {
     } })
     window.__rwAppleMapsInitialized = true
   }
-  return new window.mapkit.Search({ includeAddresses: true, includePointsOfInterest: false, includeQueries: false })
+  return new window.mapkit.Search({ includeAddresses: true, includePointsOfInterest: true, includeQueries: false })
 }
 
 function fallback(query: string): Choice[] {
-  return DESTINATIONS.filter(([city]) => city.toLowerCase().includes(query.toLowerCase())).slice(0, 6).map(([city, country]) => ({ label: `${city}, ${country}`, city, country }))
+  return DESTINATIONS.filter(([city]) => city.toLowerCase().includes(query.toLowerCase())).slice(0, 6).map(([city, country]) => ({ label: `${city}, ${country}`, city, country, searchTerm: city }))
 }
 
 export function DestinationPicker({ value, onChange }: { value: string; onChange: (city: string, country: string) => void }) {
@@ -68,6 +68,9 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
         label: (result.displayLines || [result.name, result.locality]).filter(Boolean).join(", "),
         city: result.locality || result.name || next,
         country: result.countryCode || "US",
+        // Marriott can resolve a landmark directly; retain it instead of
+        // silently widening a POI selection back to its entire city.
+        searchTerm: result.name || result.locality || next,
         raw: result,
       })))
     } catch {
@@ -80,21 +83,23 @@ export function DestinationPicker({ value, onChange }: { value: string; onChange
   async function select(choice: Choice) {
     let city = choice.city
     let country = choice.country
+    let searchTerm = choice.searchTerm
     try {
       if (choice.raw) {
         const response = await (await mapkitSearch()).search(choice.raw)
         const place = response.places?.[0]
         city = place?.locality || city
         country = place?.countryCode || country
+        searchTerm = place?.name || searchTerm
       }
     } catch { /* autocomplete already provides a usable destination */ }
-    onChange(city, country)
-    setQuery(city)
+    onChange(searchTerm, country)
+    setQuery(choice.label)
     setChoices([])
   }
 
   return <div className="relative">
-    <div className="relative"><MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><Input className="h-14 pl-10 pr-10 text-base md:text-lg" id="city" name="city" onChange={(event) => void find(event.target.value)} placeholder="City, airport, or neighbourhood" value={query} />{loading ? <SpinnerGapIcon className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}</div>
+    <div className="relative"><MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input name="city" type="hidden" value={value} /><Input className="h-14 pl-10 pr-10 text-base md:text-lg" id="city" onChange={(event) => void find(event.target.value)} placeholder="City, landmark, airport, or neighbourhood" value={query} />{loading ? <SpinnerGapIcon className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}</div>
     {choices.length ? <div className="absolute z-20 mt-2 grid w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-xl">{choices.map((choice) => <Button className="justify-start whitespace-normal px-3 py-3 text-left" key={`${choice.label}-${choice.city}`} onClick={() => void select(choice)} type="button" variant="ghost"><MapPinIcon className="shrink-0" />{choice.label}</Button>)}</div> : null}
   </div>
 }
