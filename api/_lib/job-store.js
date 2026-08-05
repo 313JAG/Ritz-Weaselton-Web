@@ -206,6 +206,22 @@ async function markRunning(id, code, attempts) {
   });
 }
 
+async function claimNextCode(id) {
+  let claimed = null;
+  await updateJob(id, (job) => {
+    if (job.status === 'cancelled' || job.status === 'completed') return job;
+    const code = job.codeOrder.find((value) => job.codeStates[value]?.status === 'queued');
+    if (!code) return job;
+    const attempts = (job.codeStates[code]?.attempts || 0) + 1;
+    job.status = 'running';
+    job.message = `Checking ${code}`;
+    job.codeStates[code] = { status: 'running', attempts, error: null };
+    claimed = { id: job.id, code, attempts, params: { ...job.params, codes: [code] } };
+    return job;
+  });
+  return claimed;
+}
+
 async function storeResult(id, result) {
   await writeJson(keyForResult(id, result.code), result);
   return updateJob(id, (job) => {
@@ -258,6 +274,7 @@ module.exports = {
   createJob,
   getJob,
   getJobRecord,
+  claimNextCode,
   markRunning,
   storeResult,
   cancelJob,

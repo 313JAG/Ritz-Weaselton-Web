@@ -304,6 +304,8 @@ export default function App() {
         setActiveView("results")
       })
 
+      void driveSearchJob(queuedJob.id)
+
       const nextJob =
         queuedJob.status === "completed"
           ? queuedJob
@@ -350,6 +352,8 @@ export default function App() {
         setShowSearchActivity(true)
       })
 
+      void driveSearchJob(queuedRetry.id)
+
       const retried =
         queuedRetry.status === "completed"
           ? queuedRetry
@@ -389,6 +393,17 @@ export default function App() {
 
       await new Promise((resolve) => window.setTimeout(resolve, searchPollDelayMs))
     }
+  }
+
+  async function driveSearchJob(jobId: string) {
+    const worker = async () => {
+      while (true) {
+        const next = await apiFetch<SearchJob>(`/api/search-jobs/${jobId}/next`, { method: "POST" })
+        if (next.status === "completed" || next.status === "cancelled") return
+        if (!next.progress.queuedCodes) return
+      }
+    }
+    await Promise.all(Array.from({ length: 4 }, worker))
   }
 
   async function handleCancelSearch() {

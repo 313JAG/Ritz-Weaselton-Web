@@ -8,6 +8,7 @@
     "api/search-jobs.js": { "maxDuration": 60 },
     "api/search-job.js": { "maxDuration": 60 },
     "api/retry-failed.js": { "maxDuration": 60 },
+    "api/run-search-code.js": { "maxDuration": 60 },
     "api/cancel-search-job.js": { "maxDuration": 10 },
     "api/queues/search-code.js": {
       "maxDuration": 300,
@@ -15,6 +16,10 @@
     }
   },
   "rewrites": [
+    {
+      "source": "/api/search-jobs/:id/next",
+      "destination": "/api/run-search-code?id=:id"
+    },
     {
       "source": "/api/search-jobs/:id/retry-failed",
       "destination": "/api/retry-failed?id=:id"
