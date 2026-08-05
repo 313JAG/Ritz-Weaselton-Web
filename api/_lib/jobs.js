@@ -1,6 +1,10 @@
 const { createJob, getJob, cancelJob, resetFailed, hasRedis } = require('./job-store');
 const { enqueueCode } = require('./search-queue');
-const WORKER_CONCURRENCY = 24;
+// The queue transport is deliberately started in a small pool. Sending a
+// large burst from the request handler can exhaust its 60-second budget
+// before a job ID reaches the browser; workers keep this pool full after the
+// immediate response.
+const WORKER_CONCURRENCY = 4;
 
 function assertConfigured() {
   if (process.env.VERCEL && !hasRedis()) {

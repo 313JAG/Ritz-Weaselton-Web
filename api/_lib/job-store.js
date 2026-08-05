@@ -112,7 +112,7 @@ function serialize(job, resultEntries) {
       failedCodes: failedCodes.length,
       runningCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'running'),
       queuedCodes: job.codeOrder.filter((code) => job.codeStates[code]?.status === 'queued').length,
-      workerLimit: job.workerLimit || 24,
+      workerLimit: job.workerLimit || 4,
     },
     failedCodes,
     codeStates: job.codeStates,
@@ -140,7 +140,7 @@ async function createJob(params) {
     updatedAt: now,
     completedAt: null,
     params: { ...params, codes: codeOrder },
-    workerLimit: 24,
+    workerLimit: 4,
     codeOrder,
     codeStates: Object.fromEntries(codeOrder.map((code) => [code, { status: 'queued', attempts: 0, error: null }])),
   };
