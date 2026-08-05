@@ -1,60 +1,31 @@
-const { randomUUID } = require('node:crypto');
-const { MarriottApiRunner, normalizeCode } = require('../../v2/lib/marriott-api-runner');
-const { SearchJobManager } = require('../../v2/lib/search-jobs');
+const { createJob, getJob, cancelJob, resetFailed, hasRedis } = require('./job-store');
+const { enqueueCode } = require('./search-queue');
 
-function getJobManager() {
-  if (!globalThis.__ritzWeaseltonJobs) {
-    globalThis.__ritzWeaseltonJobs = new SearchJobManager({ concurrency: 4 });
+function assertConfigured() {
+  if (process.env.VERCEL && !hasRedis()) {
+    throw new Error('Search storage is not configured. Connect Vercel Redis before running live comparisons.');
   }
-  return globalThis.__ritzWeaseltonJobs;
 }
 
-async function runImmediateJob(params) {
-  const codeOrder = Array.from(
-    new Set((params.codes || []).map(normalizeCode).filter(Boolean))
-  );
+async function startSearch(params) {
+  assertConfigured();
+  const job = await createJob(params);
+  const firstCode = job.params.codes[0];
+  await enqueueCode({ jobId: job.id, code: firstCode, index: 0 });
+  return job;
+}
 
-  const createdAt = new Date().toISOString();
-  const runner = new MarriottApiRunner({ concurrency: 4 });
-  const results = await runner.runSearch({
-    ...params,
-    codes: codeOrder,
+async function retryFailed(id) {
+  assertConfigured();
+  const { job, codes } = await resetFailed(id);
+  const firstCode = codes[0];
+  await enqueueCode({
+    jobId: job.id,
+    code: firstCode,
+    index: job.params.codes.indexOf(firstCode),
+    retryToken: `retry-${Date.now()}`,
   });
-  const completedAt = new Date().toISOString();
-
-  const failedCodes = results
-    .filter((result) => !result.success && result.error !== 'NO_RESULTS')
-    .map((result) => result.code);
-  const successfulCodes = results.filter(
-    (result) => result.success || result.error === 'NO_RESULTS'
-  ).length;
-
-  return {
-    id: randomUUID(),
-    status: 'completed',
-    message: 'Complete',
-    error: null,
-    debug: false,
-    createdAt,
-    updatedAt: completedAt,
-    completedAt,
-    sourceJobId: null,
-    params: {
-      ...params,
-      codes: codeOrder,
-    },
-    progress: {
-      totalCodes: codeOrder.length,
-      completedCodes: codeOrder.length,
-      successfulCodes,
-      failedCodes: failedCodes.length,
-    },
-    failedCodes,
-    results,
-  };
+  return job;
 }
 
-module.exports = {
-  getJobManager,
-  runImmediateJob,
-};
+module.exports = { startSearch, getJob, cancelJob, retryFailed };

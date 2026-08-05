@@ -1,4 +1,4 @@
-const { getJobManager, runImmediateJob } = require('./_lib/jobs');
+const { startSearch } = require('./_lib/jobs');
 const { readBody, sendJson } = require('./_lib/http');
 
 module.exports = async (req, res) => {
@@ -24,13 +24,7 @@ module.exports = async (req, res) => {
       codes,
     };
 
-    if (process.env.VERCEL) {
-      const job = await runImmediateJob(params);
-      sendJson(res, 200, job);
-      return;
-    }
-
-    const job = getJobManager().startJob(params);
+    const job = await startSearch(params);
     sendJson(res, 202, job);
   } catch (error) {
     sendJson(res, 400, { error: error.message || 'Request failed' });

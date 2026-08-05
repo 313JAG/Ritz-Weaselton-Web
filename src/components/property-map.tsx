@@ -15,7 +15,7 @@ declare global {
 type PropertyMapProps = {
   properties: PropertySummary[]
   selectedProperty: string | null
-  onSelect: (name: string) => void
+  onSelect: (key: string) => void
 }
 
 function loadAppleMapKit() {
@@ -152,16 +152,16 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
         {
           title: "",
           subtitle: "",
-          color: property.name === selectedProperty ? "#b76419" : "#caa06a",
+          color: property.key === selectedProperty ? "#b76419" : "#caa06a",
           glyphText: glyphLabel(property),
         }
       )
 
       if (typeof annotation.addEventListener === "function") {
-        annotation.addEventListener("select", () => onSelect(property.name))
+          annotation.addEventListener("select", () => onSelect(property.key))
       }
 
-      annotationsRef.current.set(property.name, annotation)
+      annotationsRef.current.set(property.key, annotation)
       return annotation
     })
 

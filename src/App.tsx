@@ -62,6 +62,7 @@ import {
   type SearchJob,
 } from "@/lib/transform"
 import { cn } from "@/lib/utils"
+import { COUNTRIES, DESTINATIONS, countryName, getLocalDate } from "@/lib/destinations"
 import logo from "../logo.jpg"
 
 type BootstrapPayload = {
@@ -71,10 +72,7 @@ type BootstrapPayload = {
 
 type ViewKey = "search" | "results" | "library" | "history"
 
-const defaultCheckIn = "2026-04-16"
-const defaultCheckOut = "2026-04-22"
 const searchPollDelayMs = 750
-const minimumSearchIndicatorMs = 1200
 
 async function apiFetch<T>(url: string, options?: RequestInit) {
   const response = await fetch(url, options)
@@ -89,7 +87,7 @@ function buildHistoryEntry(job: SearchJob): SearchHistoryEntry {
   const properties = summarizeProperties(job.results)
   return {
     id: job.id,
-    createdAt: job.completedAt,
+    createdAt: job.completedAt || job.updatedAt,
     destination: [job.params.city, job.params.country].filter(Boolean).join(", "),
     city: job.params.city,
     country: job.params.country,
@@ -104,38 +102,12 @@ function buildHistoryEntry(job: SearchJob): SearchHistoryEntry {
   }
 }
 
-function getPreviewRates(property: ReturnType<typeof summarizeProperties>[number]) {
-  const rankedAvailable = property.rates.filter((rate) => rate.available)
-  const baselineRate = property.rates.find((rate) => rate.code === "BASELINE")
-  const preview = [...rankedAvailable.slice(0, 3)]
-
-  if (baselineRate && !preview.some((rate) => rate.code === baselineRate.code)) {
-    preview.push(baselineRate)
-  }
-
-  if (!preview.length && baselineRate) {
-    preview.push(baselineRate)
-  }
-
-  return preview.slice(0, 4)
-}
-
-function getRateBadgeVariant(
-  property: ReturnType<typeof summarizeProperties>[number],
-  rate: ReturnType<typeof summarizeProperties>[number]["rates"][number]
-) {
-  if (!rate.available) return "ghost" as const
-  if (rate.code === property.bestCode) return "default" as const
-  if (rate.code === "BASELINE") return "outline" as const
-  return "secondary" as const
-}
-
 export default function App() {
   const [activeView, setActiveView] = useState<ViewKey>("search")
   const [city, setCity] = useState("Las Vegas")
   const [country, setCountry] = useState("US")
-  const [checkIn, setCheckIn] = useState(defaultCheckIn)
-  const [checkOut, setCheckOut] = useState(defaultCheckOut)
+  const [checkIn, setCheckIn] = useState(() => getLocalDate())
+  const [checkOut, setCheckOut] = useState(() => getLocalDate(1))
   const [codes, setCodes] = useState<Array<CatalogCode & { favorite?: boolean; custom?: boolean }>>([])
   const [presets, setPresets] = useState<StoredPreset[]>([])
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
@@ -146,6 +118,8 @@ export default function App() {
   const [job, setJob] = useState<SearchJob | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchActivity, setShowSearchActivity] = useState(false)
+  const [showUnavailableRates, setShowUnavailableRates] = useState(false)
+  const [propertyQuery, setPropertyQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [codeSearch, setCodeSearch] = useState("")
   const [newCode, setNewCode] = useState("")
@@ -175,7 +149,8 @@ export default function App() {
       setCodes(mergedCodes)
       setCustomCodes(browser.customCodes)
       setFavoriteCodes(browser.favoriteCodes)
-      setSelectedCodes(browser.enabledCodes.length ? browser.enabledCodes : allCodeValues)
+      const quickPreset = payload.presets.find((preset) => preset.id === "quick10")
+      setSelectedCodes(browser.enabledCodes.length ? browser.enabledCodes : quickPreset?.codes || recommendedCodes)
       setPresets(mergePresets(defaultPresets, browser.presets, recommendedCodes, allCodeValues))
       setHistory(browser.history)
       setSelectedProperty(browser.selectedProperty)
@@ -186,7 +161,12 @@ export default function App() {
     })
   }, [])
 
-  const properties = job ? summarizeProperties(job.results) : []
+  const codeCompanies = useMemo(() => Object.fromEntries(codes.map((code) => [code.code, code.company])), [codes])
+  const properties = useMemo(() => job ? summarizeProperties(job.results, codeCompanies) : [], [job, codeCompanies])
+  const visibleProperties = useMemo(() => {
+    const term = propertyQuery.trim().toLowerCase()
+    return term ? properties.filter((property) => property.name.toLowerCase().includes(term) || property.brandName.toLowerCase().includes(term)) : properties
+  }, [properties, propertyQuery])
   const filteredCodes = useMemo(() => {
     const term = deferredCodeSearch.trim().toLowerCase()
     return codes.filter((code) => {
@@ -206,7 +186,7 @@ export default function App() {
   }, [presets, selectedCodes])
 
   const selectedPropertySummary = selectedProperty
-    ? properties.find((property) => property.name === selectedProperty) || null
+    ? properties.find((property) => property.key === selectedProperty) || null
     : null
   const visibleSearchCodes = (job?.params.codes.filter((code) => code !== "BASELINE") || selectedCodes)
 
@@ -249,7 +229,18 @@ export default function App() {
   }
 
   async function runSearch(codesOverride?: string[]) {
-    const startedAt = Date.now()
+    if (!city.trim()) {
+      setError("Choose a destination before running a search")
+      return
+    }
+    if (!checkIn || !checkOut || checkOut <= checkIn) {
+      setError("Check-out must be at least one day after check-in")
+      return
+    }
+    if (!(codesOverride || selectedCodes).length) {
+      setError("Choose at least one code before running a search")
+      return
+    }
     setIsSearching(true)
     setError(null)
 
@@ -277,8 +268,8 @@ export default function App() {
         queuedJob.status === "completed"
           ? queuedJob
           : await pollSearchJob(queuedJob.id)
-      const nextProperties = summarizeProperties(nextJob.results)
-      const firstProperty = nextProperties[0]?.name || null
+      const nextProperties = summarizeProperties(nextJob.results, codeCompanies)
+      const firstProperty = nextProperties[0]?.key || null
       const nextHistory = [buildHistoryEntry(nextJob), ...history.filter((entry) => entry.id !== nextJob.id)].slice(0, 10)
 
       startTransition(() => {
@@ -292,17 +283,12 @@ export default function App() {
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Search failed")
     } finally {
-      const elapsed = Date.now() - startedAt
-      if (elapsed < minimumSearchIndicatorMs) {
-        await new Promise((resolve) => window.setTimeout(resolve, minimumSearchIndicatorMs - elapsed))
-      }
       setIsSearching(false)
     }
   }
 
   async function handleRetryFailed() {
     if (!job?.failedCodes.length) return
-    const startedAt = Date.now()
     setIsSearching(true)
     setError(null)
 
@@ -328,7 +314,7 @@ export default function App() {
         queuedRetry.status === "completed"
           ? queuedRetry
           : await pollSearchJob(queuedRetry.id)
-      const nextProperties = summarizeProperties(retried.results)
+      const nextProperties = summarizeProperties(retried.results, codeCompanies)
       const nextHistory = [buildHistoryEntry(retried), ...history.filter((entry) => entry.id !== retried.id)].slice(0, 10)
 
       startTransition(() => {
@@ -336,18 +322,14 @@ export default function App() {
         setHistory(nextHistory)
         saveHistory(nextHistory)
         setShowSearchActivity(false)
-        if (!selectedProperty && nextProperties[0]?.name) {
-          setSelectedProperty(nextProperties[0].name)
-          saveSelectedProperty(nextProperties[0].name)
+        if (!selectedProperty && nextProperties[0]?.key) {
+          setSelectedProperty(nextProperties[0].key)
+          saveSelectedProperty(nextProperties[0].key)
         }
       })
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Retry failed")
     } finally {
-      const elapsed = Date.now() - startedAt
-      if (elapsed < minimumSearchIndicatorMs) {
-        await new Promise((resolve) => window.setTimeout(resolve, minimumSearchIndicatorMs - elapsed))
-      }
       setIsSearching(false)
     }
   }
@@ -366,6 +348,32 @@ export default function App() {
       }
 
       await new Promise((resolve) => window.setTimeout(resolve, searchPollDelayMs))
+    }
+  }
+
+  async function handleCancelSearch() {
+    if (!job) return
+    try {
+      const cancelled = await apiFetch<SearchJob>(`/api/search-jobs/${job.id}/cancel`, { method: "POST" })
+      setJob(cancelled)
+      setShowSearchActivity(false)
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Could not cancel search")
+    }
+  }
+
+  function handleDestinationChange(value: string) {
+    setCity(value)
+    const match = DESTINATIONS.find(([destination]) => destination.toLowerCase() === value.trim().toLowerCase())
+    if (match) setCountry(match[1])
+  }
+
+  function handleCheckInChange(value: string) {
+    setCheckIn(value)
+    if (value >= checkOut) {
+      const next = new Date(`${value}T12:00:00`)
+      next.setDate(next.getDate() + 1)
+      setCheckOut([next.getFullYear(), String(next.getMonth() + 1).padStart(2, "0"), String(next.getDate()).padStart(2, "0")].join("-"))
     }
   }
 
@@ -506,31 +514,37 @@ export default function App() {
                 <CardContent className="grid gap-6 px-5 py-5 md:px-6 md:py-6">
                   <form className="grid gap-6" onSubmit={handleSearchSubmit}>
                     <FieldGroup>
-                      <div className="grid gap-4 md:grid-cols-[1.6fr_0.6fr]">
+                          <div className="grid gap-4 md:grid-cols-[1.6fr_0.6fr]">
                         <Field>
                           <FieldLabel htmlFor="city">Where are you staying?</FieldLabel>
                           <FieldContent>
                             <Input
                               className="h-13 text-base md:text-lg"
                               id="city"
-                              onChange={(event) => setCity(event.target.value)}
+                              list="destination-options"
+                              onChange={(event) => handleDestinationChange(event.target.value)}
                               placeholder="Las Vegas"
                               value={city}
                             />
+                            <datalist id="destination-options">
+                              {DESTINATIONS.map(([destination, destinationCountry]) => (
+                                <option key={`${destination}-${destinationCountry}`} value={destination}>{countryName(destinationCountry)}</option>
+                              ))}
+                            </datalist>
                           </FieldContent>
                         </Field>
 
                         <Field>
                           <FieldLabel htmlFor="country">Country</FieldLabel>
                           <FieldContent>
-                            <Input
-                              className="h-13 text-base md:text-lg"
+                            <select
+                              className="h-13 w-full rounded-md border border-input bg-background px-3 text-base md:text-lg"
                               id="country"
-                              maxLength={2}
-                              onChange={(event) => setCountry(event.target.value.toUpperCase())}
-                              placeholder="US"
                               value={country}
-                            />
+                              onChange={(event) => setCountry(event.target.value)}
+                            >
+                              {COUNTRIES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+                            </select>
                           </FieldContent>
                         </Field>
                       </div>
@@ -541,14 +555,14 @@ export default function App() {
                         <Field>
                           <FieldLabel htmlFor="checkIn">Check-in</FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkIn" onChange={(event) => setCheckIn(event.target.value)} type="date" value={checkIn} />
+                            <Input className="h-13 text-base" id="checkIn" min={getLocalDate()} onChange={(event) => handleCheckInChange(event.target.value)} type="date" value={checkIn} />
                           </FieldContent>
                         </Field>
 
                         <Field>
                           <FieldLabel htmlFor="checkOut">Check-out</FieldLabel>
                           <FieldContent>
-                            <Input className="h-13 text-base" id="checkOut" onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
+                            <Input className="h-13 text-base" id="checkOut" min={checkIn} onChange={(event) => setCheckOut(event.target.value)} type="date" value={checkOut} />
                           </FieldContent>
                         </Field>
                       </div>
@@ -594,12 +608,19 @@ export default function App() {
                         ))}
                         {selectedCodes.length > 4 ? <Badge variant="secondary">+{selectedCodes.length - 4} more</Badge> : null}
                       </div>
+                      <Button
+                        onClick={() => updateSelected(codes.map((code) => code.code))}
+                        type="button"
+                        variant="outline"
+                      >
+                        Run all {codes.length} codes
+                      </Button>
                     </FieldSet>
 
                     <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
                       <Button className="h-13 px-5 text-base md:min-w-64" disabled={isSearching} type="submit">
                         <MagnifyingGlassIcon data-icon="inline-start" />
-                        {isSearching ? "Searching live" : "Run live comparison"}
+                        {isSearching ? "Search running" : "Run live comparison"}
                       </Button>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>Need custom codes or favorites?</span>
@@ -628,7 +649,7 @@ export default function App() {
                   ) : null}
                 </div>
                 {history.length ? (
-                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-3">
                     {history.slice(0, 3).map((entry) => (
                       <Button
                         key={entry.id}
@@ -673,6 +694,7 @@ export default function App() {
                   {job ? <Badge>{job.params.city}, {job.params.country}</Badge> : null}
                   {job ? <Badge variant="secondary">{job.params.codes.length} codes checked</Badge> : null}
                   {job ? <Badge variant="secondary">{job.failedCodes.length} failed</Badge> : null}
+                  {job && job.status !== "completed" && job.status !== "cancelled" ? <Badge variant="secondary">{job.progress?.completedCodes || 0}/{job.progress?.totalCodes || job.params.codes.length} complete</Badge> : null}
                   <Button onClick={() => setActiveView("search")} variant="outline">
                     Back to search
                   </Button>
@@ -681,6 +703,9 @@ export default function App() {
                       <ArrowClockwiseIcon data-icon="inline-start" />
                       Retry failed
                     </Button>
+                  ) : null}
+                  {job && job.status !== "completed" && job.status !== "cancelled" ? (
+                    <Button disabled={!isSearching} onClick={handleCancelSearch} variant="outline">Cancel search</Button>
                   ) : null}
                 </div>
               </CardHeader>
@@ -693,7 +718,7 @@ export default function App() {
                           <div className="grid gap-1">
                             <p className="text-sm font-medium text-foreground">Searching Marriott live</p>
                             <p className="text-sm text-muted-foreground">
-                              Checking {visibleSearchCodes.length} corp codes for {city}, {country}.
+                              {job.progress?.completedCodes || 0} of {job.progress?.totalCodes || visibleSearchCodes.length} codes processed for {job.params.city}, {job.params.country}.
                             </p>
                           </div>
                           <Button
@@ -762,7 +787,7 @@ export default function App() {
 
             {selectedPropertySummary ? (
               <Card className="border-primary/30 bg-background/88 shadow-[0_20px_60px_rgba(69,46,23,0.08)]">
-                <CardContent className="grid gap-4 px-5 py-5 md:grid-cols-[1.1fr_0.9fr] md:px-6">
+                <CardContent className="grid gap-5 px-5 py-5 md:px-6">
                   <div className="grid gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge>Selected property</Badge>
@@ -798,6 +823,36 @@ export default function App() {
                       </p>
                     </div>
                   </div>
+                  <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/15 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">All checked prices</p>
+                        <p className="text-sm text-muted-foreground">Standard rate is pinned first; other available rates are ranked by price.</p>
+                      </div>
+                      <Button onClick={() => setShowUnavailableRates((value) => !value)} size="sm" variant="outline">
+                        {showUnavailableRates ? "Hide unavailable" : "Show all codes"}
+                      </Button>
+                    </div>
+                    <div className="max-h-[28rem] overflow-auto rounded-lg border border-border/60 bg-background">
+                      <Table>
+                        <TableHeader>
+                          <TableRow><TableHead>Code</TableHead><TableHead>Company</TableHead><TableHead>Price</TableHead><TableHead>vs standard</TableHead><TableHead>Status</TableHead><TableHead /></TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedPropertySummary.rates.filter((rate) => showUnavailableRates || rate.available || rate.code === "BASELINE").map((rate) => (
+                            <TableRow key={`${selectedPropertySummary.key}-${rate.code}`}>
+                              <TableCell className="font-medium">{rate.label}</TableCell>
+                              <TableCell>{rate.company}</TableCell>
+                              <TableCell>{rate.available ? formatCurrency(rate.price, rate.currency) : "—"}</TableCell>
+                              <TableCell>{rate.available && selectedPropertySummary.baselinePrice !== null && rate.price !== null ? formatCurrency(Math.max(selectedPropertySummary.baselinePrice - rate.price, 0), rate.currency) : "—"}</TableCell>
+                              <TableCell>{rate.available ? "Available" : rate.error || "Unavailable"}</TableCell>
+                              <TableCell>{rate.available && rate.bookingUrl ? <Button asChild size="sm" variant="outline"><a href={rate.bookingUrl} rel="noreferrer" target="_blank">Book</a></Button> : null}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -809,23 +864,24 @@ export default function App() {
                   <CardTitle>Best deals first</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {properties.length ? (
+                  {visibleProperties.length ? (
                     <div className="pr-3">
+                      <Input className="mb-4" onChange={(event) => setPropertyQuery(event.target.value)} placeholder="Filter properties" value={propertyQuery} />
                       <div className="flex flex-col gap-4 pb-4">
-                        {properties.map((property, index) => (
+                        {visibleProperties.map((property, index) => (
                           <div
-                            key={property.name}
+                            key={property.key}
                             ref={(element) => {
-                              propertyRefs.current[property.name] = element
+                              propertyRefs.current[property.key] = element
                             }}
                           >
                             <Card
                               className={cn(
                                 "cursor-pointer border-border/70 bg-background/94 transition-all hover:shadow-md",
-                                selectedProperty === property.name &&
+                                selectedProperty === property.key &&
                                   "border-primary/60 bg-primary/4 shadow-[0_16px_34px_rgba(69,46,23,0.12)] ring-1 ring-primary/50"
                               )}
-                              onClick={() => focusProperty(property.name)}
+                              onClick={() => focusProperty(property.key)}
                               size="sm"
                             >
                               <CardHeader className="gap-4">
@@ -836,7 +892,7 @@ export default function App() {
                                     <Badge variant="secondary">{property.availableCodes} priced codes</Badge>
                                     {property.distance ? <Badge variant="secondary">{property.distance}</Badge> : null}
                                   </div>
-                                  {selectedProperty === property.name ? <Badge>Selected</Badge> : null}
+                                  {selectedProperty === property.key ? <Badge>Selected</Badge> : null}
                                 </div>
                                 <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr] md:items-start">
                                   <div className="grid gap-3">
@@ -883,19 +939,7 @@ export default function App() {
                                 </div>
                               </CardHeader>
                               <CardContent className="grid gap-4">
-                                <div className="flex flex-wrap gap-2">
-                                  {getPreviewRates(property).map((rate) => (
-                                    <Badge
-                                      key={`${property.name}-${rate.code}`}
-                                      variant={getRateBadgeVariant(property, rate)}
-                                    >
-                                      {rate.label}: {rate.available ? formatCurrency(rate.price, rate.currency) : "No rate"}
-                                    </Badge>
-                                  ))}
-                                  {property.rates.length > getPreviewRates(property).length ? (
-                                    <Badge variant="secondary">+{property.rates.length - getPreviewRates(property).length} more codes</Badge>
-                                  ) : null}
-                                </div>
+                                <div className="flex flex-wrap gap-2"><Badge variant="secondary">Click to see all {property.rates.length} checked prices</Badge></div>
                                 <Separator />
                                 <div className="flex flex-wrap gap-3">
                                   {property.bookingUrl ? (
@@ -908,12 +952,12 @@ export default function App() {
                                   <Button
                                     onClick={(event) => {
                                       event.stopPropagation()
-                                      focusProperty(property.name)
+                                      focusProperty(property.key)
                                     }}
-                                    variant={selectedProperty === property.name ? "default" : "outline"}
+                                    variant={selectedProperty === property.key ? "default" : "outline"}
                                   >
                                     <MapPinIcon data-icon="inline-start" />
-                                    {selectedProperty === property.name ? "Selected on map" : "Show on map"}
+                                    {selectedProperty === property.key ? "Selected on map" : "Show on map"}
                                   </Button>
                                 </div>
                               </CardContent>
@@ -960,7 +1004,7 @@ export default function App() {
                               <Badge variant="secondary">{formatCurrency(selectedPropertySummary.savings, selectedPropertySummary.currency)} savings</Badge>
                             </div>
                           </div>
-                          <Button onClick={() => focusProperty(selectedPropertySummary.name)} variant="outline">
+                          <Button onClick={() => focusProperty(selectedPropertySummary.key)} variant="outline">
                             <MapPinIcon data-icon="inline-start" />
                             Focus in list
                           </Button>
@@ -988,11 +1032,11 @@ export default function App() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {properties.slice(0, 18).map((property) => (
+                            {visibleProperties.map((property) => (
                               <TableRow
-                                className={property.name === selectedProperty ? "cursor-pointer bg-primary/8" : "cursor-pointer"}
-                                key={property.name}
-                                onClick={() => focusProperty(property.name)}
+                                className={property.key === selectedProperty ? "cursor-pointer bg-primary/8" : "cursor-pointer"}
+                                key={property.key}
+                                onClick={() => focusProperty(property.key)}
                               >
                                 <TableCell className="font-medium">{property.name}</TableCell>
                                 <TableCell>{property.bestCodeLabel || "No rate"}</TableCell>

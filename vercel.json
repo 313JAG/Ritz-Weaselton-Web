@@ -7,12 +7,21 @@
   "functions": {
     "api/search-jobs.js": { "maxDuration": 60 },
     "api/search-job.js": { "maxDuration": 10 },
-    "api/retry-failed.js": { "maxDuration": 60 }
+    "api/retry-failed.js": { "maxDuration": 60 },
+    "api/cancel-search-job.js": { "maxDuration": 10 },
+    "api/queues/search-code.js": {
+      "maxDuration": 300,
+      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "ritz-search-code", "retryAfterSeconds": 10 }]
+    }
   },
   "rewrites": [
     {
       "source": "/api/search-jobs/:id/retry-failed",
       "destination": "/api/retry-failed?id=:id"
+    },
+    {
+      "source": "/api/search-jobs/:id/cancel",
+      "destination": "/api/cancel-search-job?id=:id"
     },
     {
       "source": "/api/search-jobs/:id",

@@ -26,6 +26,11 @@ const dynamicRouteMatchers = [
     load: () => require('./api/retry-failed'),
     queryFromMatch: (match) => ({ id: match[1] }),
   },
+  {
+    match: (pathname) => pathname.match(/^\/api\/search-jobs\/([^/]+)\/cancel$/),
+    load: () => require('./api/cancel-search-job'),
+    queryFromMatch: (match) => ({ id: match[1] }),
+  },
 ];
 
 const MIME_TYPES = {

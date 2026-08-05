@@ -1,4 +1,4 @@
-const { getJobManager } = require('./_lib/jobs');
+const { getJob } = require('./_lib/jobs');
 const { sendJson } = require('./_lib/http');
 
 module.exports = async (req, res) => {
@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const job = getJobManager().getJob(jobId);
+  const job = await getJob(jobId);
   if (!job) {
     sendJson(res, 404, { error: 'Search job not found' });
     return;

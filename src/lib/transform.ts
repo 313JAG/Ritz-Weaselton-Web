@@ -42,7 +42,7 @@ export type CodeResult = {
 export type SearchJob = {
   id: string
   status: string
-  completedAt: string
+  completedAt: string | null
   createdAt: string
   updatedAt: string
   params: {
@@ -53,10 +53,18 @@ export type SearchJob = {
     codes: string[]
   }
   failedCodes: string[]
+  progress: {
+    totalCodes: number
+    completedCodes: number
+    successfulCodes: number
+    failedCodes: number
+    runningCodes?: string[]
+  }
   results: CodeResult[]
 }
 
 export type PropertySummary = {
+  key: string
   propertyId: string
   name: string
   brandName: string
@@ -84,6 +92,8 @@ export type PropertySummary = {
     currency: string | null
     available: boolean
     bookingUrl: string
+    company: string
+    error: string | null
   }>
 }
 
@@ -152,16 +162,18 @@ export function mergePresets(
   }))
 }
 
-export function summarizeProperties(results: CodeResult[]) {
+export function summarizeProperties(results: CodeResult[], codeCompanies: Record<string, string> = {}) {
   const properties = new Map<string, PropertySummary>()
   const baseline = results.find((result) => result.code === "BASELINE")
   const baselinePrices = new Map(
-    (baseline?.hotels || []).map((hotel) => [hotel.name, typeof hotel.price === "number" ? hotel.price : null])
+    (baseline?.hotels || []).map((hotel) => [hotel.propertyId || `name:${hotel.name.toLowerCase()}`, typeof hotel.price === "number" ? hotel.price : null])
   )
 
   for (const result of results) {
     for (const hotel of result.hotels || []) {
-      const current = properties.get(hotel.name) || {
+      const propertyKey = hotel.propertyId || `name:${hotel.name.toLowerCase()}`
+      const current = properties.get(propertyKey) || {
+        key: propertyKey,
         propertyId: hotel.propertyId || "",
         name: hotel.name,
         brandName: hotel.brandName || "",
@@ -192,15 +204,33 @@ export function summarizeProperties(results: CodeResult[]) {
         currency: hotel.currency || null,
         available: typeof hotel.price === "number",
         bookingUrl: result.url,
+        company: result.code === "BASELINE" ? "Standard rate" : codeCompanies[result.code] || "Corporate code",
+        error: result.success ? null : result.error,
       })
 
-      properties.set(hotel.name, current)
+      properties.set(propertyKey, current)
     }
   }
 
   for (const property of properties.values()) {
-    property.baselinePrice = baselinePrices.get(property.name) ?? null
+    property.baselinePrice = baselinePrices.get(property.key) ?? null
+    const presentCodes = new Set(property.rates.map((rate) => rate.code))
+    for (const result of results) {
+      if (presentCodes.has(result.code)) continue
+      property.rates.push({
+        code: result.code,
+        label: codeLabel(result.code),
+        price: null,
+        currency: property.currency,
+        available: false,
+        bookingUrl: result.url,
+        company: result.code === "BASELINE" ? "Standard rate" : codeCompanies[result.code] || "Corporate code",
+        error: result.success ? "No rate returned" : result.error || "Search failed",
+      })
+    }
     property.rates.sort((left, right) => {
+      if (left.code === "BASELINE") return -1
+      if (right.code === "BASELINE") return 1
       if (left.available !== right.available) return Number(right.available) - Number(left.available)
       return (left.price ?? Number.POSITIVE_INFINITY) - (right.price ?? Number.POSITIVE_INFINITY)
     })
