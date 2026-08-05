@@ -3,8 +3,15 @@ const DEFAULT_TIMEOUT_MS = 45000;
 const SEARCH_ENDPOINT = 'https://www.marriott.com/mi/query/phoenixShopDatedSearchByDestinationQuery';
 const SEARCH_OPERATION_NAME = 'phoenixShopDatedSearchByDestinationQuery';
 const SEARCH_SIGNATURE = '19936acf228edb1a7c43b0b5e2102ef9cbe7e79c0f8fadd0d03bada15f4a6c25';
-const SEARCH_DISTANCE_METERS = 80467.2;
+// A city search should be useful for an actual stay, not a 50-mile regional
+// sweep. Ten miles keeps San Francisco searches centred on the city and makes
+// large code comparisons substantially lighter.
+const SEARCH_DISTANCE_METERS = 16093.4;
 const PAGE_SIZE = 40;
+// A code can return several property pages. Fetching every page serially was
+// the largest avoidable delay in library-wide searches. Two at a time keeps
+// the downstream pressure bounded while shortening each code's completion.
+const PAGE_FETCH_CONCURRENCY = 2;
 const DEFAULT_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
 const SEARCH_SORT = {
@@ -552,38 +559,49 @@ async function fetchSearchPage(params, url, offset) {
 async function fetchAllHotelsForCode(params) {
   const url = buildSearchUrl(params);
   const byName = new Map();
-  let offset = 0;
-  let total = 0;
-  let pageCount = 0;
+  const firstPayload = await fetchSearchPage(params, url, 0);
+  const firstConnection = firstPayload?.data?.search?.lowestAvailableRates?.searchByDestination;
+  if (!firstConnection) {
+    return {
+      success: false,
+      error: extractPayloadError(firstPayload) || 'UNEXPECTED_RESPONSE',
+      hotels: [],
+      url,
+    };
+  }
 
-  while (true) {
-    const payload = await fetchSearchPage(params, url, offset);
-    const connection = payload?.data?.search?.lowestAvailableRates?.searchByDestination;
-    if (!connection) {
-      return {
-        success: false,
-        error: extractPayloadError(payload) || 'UNEXPECTED_RESPONSE',
-        hotels: [],
-        url,
-      };
-    }
-
-    const pageHotels = Array.isArray(connection.edges)
+  const addHotels = (connection) => {
+    const pageHotels = Array.isArray(connection?.edges)
       ? connection.edges.map((edge) => parseHotelNode(edge?.node, params)).filter((hotel) => hotel.name)
       : [];
-    for (const hotel of pageHotels) {
-      byName.set(hotel.name, hotel);
-    }
+    for (const hotel of pageHotels) byName.set(hotel.propertyId || hotel.name, hotel);
+  };
 
-    total = Number(connection.total || 0);
-    pageCount += 1;
-    const pageInfo = connection.pageInfo || {};
-    if (!pageInfo.hasNextPage || pageInfo.nextOffset === null || pageInfo.nextOffset === undefined) {
-      break;
-    }
-    offset = Number(pageInfo.nextOffset);
-    if (!Number.isFinite(offset) || pageCount > 10) {
-      break;
+  addHotels(firstConnection);
+  const total = Number(firstConnection.total || 0);
+  const firstPageInfo = firstConnection.pageInfo || {};
+  const firstNextOffset = Number(firstPageInfo.nextOffset);
+
+  // Marriott exposes the total after page one, allowing the remaining offsets
+  // to be fetched in controlled pairs instead of waiting page-by-page.
+  if (firstPageInfo.hasNextPage && Number.isFinite(firstNextOffset)) {
+    const offsets = [];
+    for (let offset = firstNextOffset; offset < total && offsets.length < 9; offset += PAGE_SIZE) offsets.push(offset);
+    for (let index = 0; index < offsets.length; index += PAGE_FETCH_CONCURRENCY) {
+      const payloads = await Promise.all(offsets.slice(index, index + PAGE_FETCH_CONCURRENCY)
+        .map((offset) => fetchSearchPage(params, url, offset)));
+      for (const payload of payloads) {
+        const connection = payload?.data?.search?.lowestAvailableRates?.searchByDestination;
+        if (!connection) {
+          return {
+            success: false,
+            error: extractPayloadError(payload) || 'UNEXPECTED_RESPONSE',
+            hotels: [],
+            url,
+          };
+        }
+        addHotels(connection);
+      }
     }
   }
 
@@ -599,8 +617,6 @@ async function fetchAllHotelsForCode(params) {
   return {
     success: true,
     error: null,
-    // Marriott already returns coordinates for most properties. Refining every result for
-    // every code multiplies external requests and makes large comparisons unreliable.
     hotels: [...byName.values()],
     url,
   };
