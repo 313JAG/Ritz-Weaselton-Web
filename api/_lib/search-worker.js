@@ -3,6 +3,7 @@ const { getJobRecord, markRunning, storeResult } = require('./job-store');
 const { enqueueCode } = require('./search-queue');
 
 const MAX_ATTEMPTS = 3;
+const WORKER_CONCURRENCY = 3;
 const TRANSIENT_ERRORS = new Set(['TIMEOUT', 'NETWORK_ERROR']);
 
 function shouldRetry(result, attempts) {
@@ -10,9 +11,12 @@ function shouldRetry(result, attempts) {
 }
 
 async function enqueueNext(job, currentIndex) {
-  const nextCode = job.codeOrder.slice(currentIndex + 1).find((code) => job.codeStates[code]?.status === 'queued');
+  // Keep a small fixed number of in-flight searches. This is much faster than
+  // serial work while remaining safely below Marriott's request limits.
+  const nextCode = job.codeOrder[currentIndex + WORKER_CONCURRENCY];
+  if (nextCode && job.codeStates[nextCode]?.status !== 'queued') return;
   if (!nextCode) return;
-  await enqueueCode({ jobId: job.id, code: nextCode, index: job.codeOrder.indexOf(nextCode) });
+  await enqueueCode({ jobId: job.id, code: nextCode, index: currentIndex + WORKER_CONCURRENCY });
 }
 
 async function processSearchCodeMessage(message, metadata = {}) {
