@@ -114,6 +114,7 @@ export default function App() {
   const [checkIn, setCheckIn] = useState(() => getLocalDate())
   const [checkOut, setCheckOut] = useState(() => getLocalDate(1))
   const [codes, setCodes] = useState<Array<CatalogCode & { favorite?: boolean; custom?: boolean }>>([])
+  const [codesReady, setCodesReady] = useState(false)
   const [presets, setPresets] = useState<StoredPreset[]>([])
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
   const [favoriteCodes, setFavoriteCodes] = useState<string[]>([])
@@ -159,6 +160,7 @@ export default function App() {
       setPresets(mergePresets(defaultPresets, browser.presets, recommendedCodes, allCodeValues))
       setHistory(browser.history)
       setSelectedProperty(browser.selectedProperty)
+      setCodesReady(true)
     }
 
     bootstrap().catch((caughtError: Error) => {
@@ -583,8 +585,8 @@ export default function App() {
                         ))}
                       </ToggleGroup>
                       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/75 px-3 py-3">
-                        <Badge>{selectedPresetId ? presets.find((preset) => preset.id === selectedPresetId)?.name || "Preset" : "Custom"}</Badge>
-                        <Badge variant="secondary">{selectedCodes.length} codes selected</Badge>
+                        <Badge>{codesReady ? selectedPresetId ? presets.find((preset) => preset.id === selectedPresetId)?.name || "Preset" : "Custom" : "Preparing codes"}</Badge>
+                        <Badge variant="secondary">{codesReady ? `${selectedCodes.length} codes selected` : "Loading library"}</Badge>
                         {selectedCodes.slice(0, 4).map((code) => (
                           <Badge key={code} variant="secondary">{codeLabel(code)}</Badge>
                         ))}
@@ -592,6 +594,7 @@ export default function App() {
                       </div>
                       <Button
                         className="rw-all-codes"
+                        disabled={!codesReady}
                         onClick={() => updateSelected(codes.map((code) => code.code))}
                         type="button"
                         variant="outline"
@@ -601,12 +604,12 @@ export default function App() {
                     </FieldSet>
 
                     <div className="rw-submit-row">
-                      <Button className="rw-submit" disabled={isSearching} type="submit">
+                      <Button className="rw-submit" disabled={isSearching || !codesReady || !selectedCodes.length} type="submit">
                         <MagnifyingGlassIcon data-icon="inline-start" />
-                        {isSearching ? "Search running" : "Run live comparison"}
+                        {isSearching ? "Search running" : !codesReady ? "Loading rate codes" : "Run live comparison"}
                       </Button>
                       <div className="rw-submit-hint">
-                        <span>{selectedCodes.length} codes selected</span>
+                        <span>{codesReady ? `${selectedCodes.length} codes selected` : "Loading code library"}</span>
                         <Button
                           className="px-0"
                           onClick={() => setActiveView("library")}
