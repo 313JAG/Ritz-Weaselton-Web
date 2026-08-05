@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 import { formatCurrency, type PropertySummary, type SearchJob } from "@/lib/transform"
 
-type CodeProgress = { code: string; status: "done" | "queued" | "running" | "failed" }
+type CodeProgress = { code: string; status: string }
 
 type Props = {
   job: SearchJob | null
