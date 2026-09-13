@@ -5,15 +5,39 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "functions": {
-    "api/search-jobs.js": { "maxDuration": 60 },
-    "api/search-job.js": { "maxDuration": 60 },
-    "api/retry-failed.js": { "maxDuration": 60 },
-    "api/run-search-code.js": { "maxDuration": 120 },
-    "api/search-code.js": { "maxDuration": 120 },
-    "api/cancel-search-job.js": { "maxDuration": 10 },
+    "api/search-jobs.js": {
+      "maxDuration": 60
+    },
+    "api/search-job.js": {
+      "maxDuration": 60
+    },
+    "api/retry-failed.js": {
+      "maxDuration": 60
+    },
+    "api/run-search-code.js": {
+      "maxDuration": 120,
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
+    },
+    "api/search-code.js": {
+      "maxDuration": 120,
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
+    },
+    "api/cancel-search-job.js": {
+      "maxDuration": 10
+    },
     "api/queues/search-code.js": {
       "maxDuration": 300,
-      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "ritz-search-code", "retryAfterSeconds": 10 }]
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "ritz-search-code",
+          "retryAfterSeconds": 10
+        }
+      ],
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/**"
     }
   },
   "rewrites": [

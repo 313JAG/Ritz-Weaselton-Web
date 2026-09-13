@@ -34,18 +34,24 @@ function hasRedis() {
 
 async function redisCommand(parts) {
   if (!hasRedis()) return null;
-  const response = await fetch(`${redisUrl().replace(/\/$/, '')}/`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${redisToken()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(parts),
-  });
-  if (!response.ok) throw new Error(`Redis request failed (${response.status})`);
-  const payload = await response.json();
-  if (payload.error) throw new Error(payload.error);
-  return payload.result;
+  try {
+    const response = await fetch(`${redisUrl().replace(/\/$/, '')}/`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${redisToken()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(parts),
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (payload.error) return null;
+    return payload.result;
+  } catch {
+    // Shared cache is best-effort. Never fail a Marriott search because Redis is down.
+    return null;
+  }
 }
 
 async function readSharedSession() {
@@ -54,7 +60,14 @@ async function readSharedSession() {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
-    if (parsed?.cookie && parsed.expiresAt > Date.now()) return parsed;
+    if (
+      parsed?.cookie &&
+      typeof parsed.cookie === 'string' &&
+      (parsed.cookie.includes('_abck') || parsed.cookie.includes('bm_sz')) &&
+      parsed.expiresAt > Date.now()
+    ) {
+      return parsed;
+    }
   } catch {}
   return null;
 }
@@ -181,13 +194,15 @@ function startMitmProxy() {
 }
 
 function runChromeDump({ executablePath, chromeArgs, proxyPort, userDataDir, url }) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const args = [
       ...chromeArgs,
       '--headless=new',
       '--disable-gpu',
       '--no-sandbox',
       '--disable-dev-shm-usage',
+      // single-process is required on Vercel/Lambda Chromium, but SIGSEGVs local Chrome.
+      ...(process.env.VERCEL ? ['--single-process', '--no-zygote'] : []),
       `--user-data-dir=${userDataDir}`,
       '--disable-blink-features=AutomationControlled',
       `--proxy-server=127.0.0.1:${proxyPort}`,
@@ -202,29 +217,60 @@ function runChromeDump({ executablePath, chromeArgs, proxyPort, userDataDir, url
     ];
 
     const child = spawn(executablePath, args, {
-      stdio: ['ignore', 'ignore', 'ignore'],
+      stdio: ['ignore', 'ignore', 'pipe'],
       env: { ...process.env, HOME: userDataDir },
     });
 
     let settled = false;
+    let stderr = '';
+    child.stderr?.on('data', (chunk) => {
+      stderr += String(chunk);
+      if (stderr.length > 4000) stderr = stderr.slice(-4000);
+    });
+
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
       child.kill('SIGKILL');
-      resolve({ timedOut: true });
+      resolve({ timedOut: true, stderr });
     }, BOOTSTRAP_TIMEOUT_MS);
 
-    child.on('exit', () => {
+    child.on('error', (error) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      resolve({ timedOut: false });
+      reject(
+        new Error(
+          `Failed to launch Chromium for Marriott session (${error.code || error.message})`
+        )
+      );
+    });
+
+    child.on('exit', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ timedOut: false, code, signal, stderr });
     });
   });
 }
 
 async function bootstrapSession(params = {}) {
-  const { executablePath, args: chromeArgs } = await resolveChromePath();
+  let executablePath;
+  let chromeArgs;
+  try {
+    ({ executablePath, args: chromeArgs } = await resolveChromePath());
+  } catch (error) {
+    throw new Error(
+      `SESSION_BOOTSTRAP_FAILED: could not resolve Chromium (${error.message || error})`
+    );
+  }
+  if (!executablePath || !fs.existsSync(executablePath)) {
+    throw new Error(
+      `SESSION_BOOTSTRAP_FAILED: Chromium binary missing at ${executablePath || '(empty)'}`
+    );
+  }
+
   const mitm = await startMitmProxy();
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ritz-chrome-'));
   const originalLog = console.log;
@@ -232,7 +278,7 @@ async function bootstrapSession(params = {}) {
   console.log = () => {};
   console.error = () => {};
   try {
-    await runChromeDump({
+    const dumpResult = await runChromeDump({
       executablePath,
       chromeArgs,
       proxyPort: mitm.port,
@@ -241,12 +287,21 @@ async function bootstrapSession(params = {}) {
     });
     const captured = mitm.getCaptured();
     if (!captured?.cookie) {
-      throw new Error('Could not establish a Marriott browsing session');
+      const hint = dumpResult?.timedOut
+        ? 'timed out'
+        : `exit ${dumpResult?.code ?? 'unknown'}${dumpResult?.signal ? `/${dumpResult.signal}` : ''}`;
+      const stderrHint = dumpResult?.stderr
+        ? `; stderr: ${String(dumpResult.stderr).replace(/\s+/g, ' ').slice(0, 300)}`
+        : '';
+      throw new Error(
+        `SESSION_BOOTSTRAP_FAILED: could not capture Akamai cookies (${hint})${stderrHint}`
+      );
     }
     const session = {
       cookie: captured.cookie,
       userAgent: captured.userAgent || DEFAULT_USER_AGENT,
       expiresAt: Date.now() + SESSION_TTL_MS,
+      source: process.env.VERCEL ? 'vercel-chromium' : 'local-chrome',
     };
     await writeSharedSession(session);
     return session;
