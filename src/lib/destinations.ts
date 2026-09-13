@@ -7,7 +7,7 @@ export const COUNTRIES = [
 
 export const DESTINATIONS = [
   ["Adelaide", "AU"], ["Amsterdam", "NL"], ["Atlanta", "US"], ["Bangkok", "TH"], ["Barcelona", "ES"],
-  ["Beijing", "CN"], ["Brisbane", "AU"], ["Chicago", "US"], ["Dubai", "AE"], ["Gold Coast", "AU"],
+  ["Beijing", "CN"], ["Brisbane", "AU"], ["Chicago", "US"], ["Detroit", "US"], ["Dubai", "AE"], ["Gold Coast", "AU"],
   ["Honolulu", "US"], ["Hong Kong", "HK"], ["Las Vegas", "US"], ["London", "GB"], ["Los Angeles", "US"],
   ["Melbourne", "AU"], ["Miami", "US"], ["New York", "US"], ["Paris", "FR"], ["Perth", "AU"],
   ["San Francisco", "US"], ["Singapore", "SG"], ["Sydney", "AU"], ["Tokyo", "JP"], ["Toronto", "CA"],

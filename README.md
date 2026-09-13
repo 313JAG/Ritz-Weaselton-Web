@@ -29,3 +29,4 @@ Search jobs and results are retained for 24 hours. Vercel Queues uses the projec
 
 - The hosted prototype is Vercel-friendly and uses root API routes plus the `v2/` static front end.
 - `npm start` runs the root hosted dev server. The older `v2/server.js` remains available as a local fallback during the transition.
+- Marriott sits behind Akamai Bot Manager, so plain serverless fetches get `ACCESS_DENIED`. The search runner bootstraps a short-lived Chrome session, captures valid cookies, and reuses them for GraphQL rate lookups.

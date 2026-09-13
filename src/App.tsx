@@ -292,7 +292,7 @@ export default function App() {
       const localJob: SearchJob = {
         id: crypto.randomUUID(), status: "running", createdAt: startedAt, updatedAt: startedAt, completedAt: null,
         params, failedCodes: [], results: [],
-        progress: { totalCodes: runCodes.length, completedCodes: 0, successfulCodes: 0, failedCodes: 0, queuedCodes: runCodes.length, workerLimit: 4 },
+        progress: { totalCodes: runCodes.length, completedCodes: 0, successfulCodes: 0, failedCodes: 0, queuedCodes: runCodes.length, workerLimit: 2 },
         codeStates: Object.fromEntries(runCodes.map((code) => [code, { status: "queued" as const, attempts: 0, error: null }])),
       }
       startTransition(() => { setJob(localJob); setSelectedProperty(null); setShowSearchActivity(true); setActiveView("results") })
@@ -318,7 +318,7 @@ export default function App() {
           setJob({ ...localJob, results: [...completed], codeStates: { ...localJob.codeStates } })
         }
       }
-      await Promise.all(Array.from({ length: Math.min(4, runCodes.length) }, worker))
+      await Promise.all(Array.from({ length: Math.min(2, runCodes.length) }, worker))
       const nextJob: SearchJob = { ...localJob, status: "completed", completedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), results: results.filter(Boolean), failedCodes: results.filter((item) => !item.success && item.error !== "NO_RESULTS").map((item) => item.code), progress: { ...localJob.progress, completedCodes: runCodes.length, queuedCodes: 0 } }
       const nextProperties = summarizeProperties(nextJob.results, codeCompanies)
       const firstProperty = nextProperties[0]?.key || null
