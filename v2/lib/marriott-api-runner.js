@@ -502,6 +502,7 @@ function normalizeRemoteError(error) {
   const lowered = message.toLowerCase();
   const status = Number(error?.status || 0);
 
+  if (message.startsWith('SESSION_BOOTSTRAP_FAILED')) return message;
   if (status === 403 || status === 429) return 'ACCESS_DENIED';
   if (status === 408 || status === 504) return 'TIMEOUT';
   if (lowered.includes('access') && lowered.includes('denied')) return 'ACCESS_DENIED';
@@ -509,6 +510,10 @@ function normalizeRemoteError(error) {
   if (lowered.includes('timeout')) return 'TIMEOUT';
   if (lowered.includes('fetch failed') || lowered.includes('network')) return 'NETWORK_ERROR';
   return message;
+}
+
+function shouldRefreshSession(errorCode) {
+  return errorCode === 'ACCESS_DENIED' || errorCode === 'NETWORK_ERROR';
 }
 
 function extractPayloadError(payload) {
@@ -678,14 +683,14 @@ class MarriottApiRunner {
       try {
         response = await fetchAllHotelsForCode(params, session);
       } catch (error) {
-        // Akamai session cookies expire. Refresh once, then retry the code.
-        if (normalizeRemoteError(error) !== 'ACCESS_DENIED') throw error;
+        // Cached Akamai cookies can be IP/UA bound. Refresh once on deny or network fail.
+        if (!shouldRefreshSession(normalizeRemoteError(error))) throw error;
         await invalidateMarriottSession();
         session = await getMarriottSession(params, { forceRefresh: true });
         response = await fetchAllHotelsForCode(params, session);
       }
 
-      if (!response.success && response.error === 'ACCESS_DENIED') {
+      if (!response.success && shouldRefreshSession(response.error)) {
         await invalidateMarriottSession();
         session = await getMarriottSession(params, { forceRefresh: true });
         response = await fetchAllHotelsForCode(params, session);
