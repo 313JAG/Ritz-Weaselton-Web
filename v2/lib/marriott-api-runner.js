@@ -1,3 +1,5 @@
+const { getMarriottSession, invalidateMarriottSession } = require('./marriott-session');
+
 const DEFAULT_CONCURRENCY = 4;
 const DEFAULT_TIMEOUT_MS = 45000;
 const SEARCH_ENDPOINT = 'https://www.marriott.com/mi/query/phoenixShopDatedSearchByDestinationQuery';
@@ -367,8 +369,8 @@ function buildPayload(params, offset = 0) {
   };
 }
 
-function buildHeaders(url) {
-  return {
+function buildHeaders(url, session = null) {
+  const headers = {
     'application-name': 'shop',
     'graphql-operation-name': SEARCH_OPERATION_NAME,
     'apollographql-client-version': 'v1',
@@ -380,8 +382,12 @@ function buildHeaders(url) {
     'content-type': 'application/json',
     origin: 'https://www.marriott.com',
     referer: url,
-    'user-agent': DEFAULT_USER_AGENT,
+    'user-agent': session?.userAgent || DEFAULT_USER_AGENT,
   };
+  if (session?.cookie) {
+    headers.cookie = session.cookie;
+  }
+  return headers;
 }
 
 function toDisplayPrice(amount) {
@@ -528,11 +534,11 @@ function extractPayloadError(payload) {
   return errorMessage || failedStatus.code || 'REMOTE_ERROR';
 }
 
-async function fetchSearchPage(params, url, offset) {
+async function fetchSearchPage(params, url, offset, session) {
   const payload = buildPayload(params, offset);
   const response = await fetch(SEARCH_ENDPOINT, {
     method: 'POST',
-    headers: buildHeaders(url),
+    headers: buildHeaders(url, session),
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
@@ -556,10 +562,10 @@ async function fetchSearchPage(params, url, offset) {
   return payloadData;
 }
 
-async function fetchAllHotelsForCode(params) {
+async function fetchAllHotelsForCode(params, session) {
   const url = buildSearchUrl(params);
   const byName = new Map();
-  const firstPayload = await fetchSearchPage(params, url, 0);
+  const firstPayload = await fetchSearchPage(params, url, 0, session);
   const firstConnection = firstPayload?.data?.search?.lowestAvailableRates?.searchByDestination;
   if (!firstConnection) {
     return {
@@ -589,7 +595,7 @@ async function fetchAllHotelsForCode(params) {
     for (let offset = firstNextOffset; offset < total && offsets.length < 9; offset += PAGE_SIZE) offsets.push(offset);
     for (let index = 0; index < offsets.length; index += PAGE_FETCH_CONCURRENCY) {
       const payloads = await Promise.all(offsets.slice(index, index + PAGE_FETCH_CONCURRENCY)
-        .map((offset) => fetchSearchPage(params, url, offset)));
+        .map((offset) => fetchSearchPage(params, url, offset, session)));
       for (const payload of payloads) {
         const connection = payload?.data?.search?.lowestAvailableRates?.searchByDestination;
         if (!connection) {
@@ -667,7 +673,24 @@ class MarriottApiRunner {
     const url = buildSearchUrl(params);
 
     try {
-      const response = await fetchAllHotelsForCode(params);
+      let session = await getMarriottSession(params);
+      let response;
+      try {
+        response = await fetchAllHotelsForCode(params, session);
+      } catch (error) {
+        // Akamai session cookies expire. Refresh once, then retry the code.
+        if (normalizeRemoteError(error) !== 'ACCESS_DENIED') throw error;
+        await invalidateMarriottSession();
+        session = await getMarriottSession(params, { forceRefresh: true });
+        response = await fetchAllHotelsForCode(params, session);
+      }
+
+      if (!response.success && response.error === 'ACCESS_DENIED') {
+        await invalidateMarriottSession();
+        session = await getMarriottSession(params, { forceRefresh: true });
+        response = await fetchAllHotelsForCode(params, session);
+      }
+
       return {
         code,
         success: response.success,

@@ -13,6 +13,7 @@ const routes = {
   '/api/apple-maps-token': require('./api/apple-maps-token'),
   '/api/bootstrap': require('./api/bootstrap'),
   '/api/search-jobs': require('./api/search-jobs'),
+  '/api/search-code': require('./api/search-code'),
 };
 
 const dynamicRouteMatchers = [
