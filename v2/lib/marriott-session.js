@@ -118,15 +118,21 @@ function findLocalChrome() {
 }
 
 async function resolveChromePath() {
-  const local = findLocalChrome();
-  if (local) return { executablePath: local, args: [] };
+  // On Vercel, always use the packaged Chromium binary.
+  if (!process.env.VERCEL) {
+    const local = findLocalChrome();
+    if (local) return { executablePath: local, args: [] };
+  }
   const chromium = require('@sparticuz/chromium');
   if (typeof chromium.setGraphicsMode === 'function') {
     chromium.setGraphicsMode(false);
   }
+  const rawArgs = Array.isArray(chromium.args) ? chromium.args : [];
+  // Drop packaged headless flags; we always pass --headless=new ourselves.
+  const args = rawArgs.filter((arg) => !String(arg).startsWith('--headless'));
   return {
     executablePath: await chromium.executablePath(),
-    args: chromium.args || [],
+    args,
   };
 }
 
