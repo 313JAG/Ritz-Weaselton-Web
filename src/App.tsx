@@ -80,7 +80,7 @@ function buildHistoryEntry(job: SearchJob): SearchHistoryEntry {
     checkOut: job.params.checkOut,
     codes: job.params.codes.filter((code) => code !== "BASELINE"),
     propertyCount: properties.length,
-    bestSavings: properties[0]?.savings || 0,
+    bestSavings: properties.reduce((best, property) => Math.max(best, property.savings), 0),
     topWinningCode:
       properties.find((property) => property.bestCode && property.bestCode !== "BASELINE")?.bestCode || null,
   }
