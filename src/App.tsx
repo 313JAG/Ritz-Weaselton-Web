@@ -35,6 +35,7 @@ import {
 } from "@/lib/browser-store"
 import {
   codeLabel,
+  filterDefaultPresetCodes,
   formatDateTime,
   mergeCodes,
   mergePresets,
@@ -51,6 +52,9 @@ import logo from "../logo.jpg"
 type BootstrapPayload = {
   codes: CatalogCode[]
   presets: CatalogPreset[]
+  ratePreferences?: {
+    excludedFromDefaultPresetCodes?: string[]
+  }
 }
 
 type ViewKey = "search" | "results" | "library" | "history"
@@ -95,6 +99,7 @@ export default function App() {
   const [codes, setCodes] = useState<Array<CatalogCode & { favorite?: boolean; custom?: boolean }>>([])
   const [codesReady, setCodesReady] = useState(false)
   const [presets, setPresets] = useState<StoredPreset[]>([])
+  const [defaultPresetExcludedCodes, setDefaultPresetExcludedCodes] = useState<string[]>([])
   const [selectedCodes, setSelectedCodes] = useState<string[]>([])
   const [favoriteCodes, setFavoriteCodes] = useState<string[]>([])
   const [customCodes, setCustomCodes] = useState<StoredCustomCode[]>([])
@@ -116,8 +121,15 @@ export default function App() {
       const browser = getBrowserState()
       const payload = await apiFetch<BootstrapPayload>("/api/bootstrap")
       const mergedCodes = mergeCodes(payload.codes, browser.customCodes as CatalogCode[], browser.favoriteCodes)
-      const allCodeValues = mergedCodes.map((code) => code.code)
-      const recommendedCodes = mergedCodes.filter((code) => code.recommended).map((code) => code.code)
+      const excludedCodes = uniqueCodes(payload.ratePreferences?.excludedFromDefaultPresetCodes || [])
+      const allCodeValues = filterDefaultPresetCodes(
+        mergedCodes.map((code) => code.code),
+        excludedCodes,
+      )
+      const recommendedCodes = filterDefaultPresetCodes(
+        mergedCodes.filter((code) => code.recommended).map((code) => code.code),
+        excludedCodes,
+      )
       const defaultPresets = [
         {
           id: "all-codes",
@@ -126,13 +138,17 @@ export default function App() {
           isDefault: true,
           dynamic: "all",
         },
-        ...payload.presets,
+        ...payload.presets.map((preset) => ({
+          ...preset,
+          codes: filterDefaultPresetCodes(preset.codes, excludedCodes),
+        })),
       ]
 
       setCodes(mergedCodes)
       setCustomCodes(browser.customCodes)
       setFavoriteCodes(browser.favoriteCodes)
-      const quickPreset = payload.presets.find((preset) => preset.id === "quick10")
+      setDefaultPresetExcludedCodes(excludedCodes)
+      const quickPreset = defaultPresets.find((preset) => preset.id === "quick10")
       setSelectedCodes(browser.enabledCodes.length ? browser.enabledCodes : quickPreset?.codes || recommendedCodes)
       setPresets(mergePresets(defaultPresets, browser.presets, recommendedCodes, allCodeValues))
       setHistory(browser.history)
@@ -555,8 +571,11 @@ export default function App() {
       mergePresets(
         presets.filter((preset) => preset.isDefault),
         nextCustomPresets,
-        codes.filter((code) => code.recommended).map((code) => code.code),
-        codes.map((code) => code.code),
+        filterDefaultPresetCodes(
+          codes.filter((code) => code.recommended).map((code) => code.code),
+          defaultPresetExcludedCodes,
+        ),
+        filterDefaultPresetCodes(codes.map((code) => code.code), defaultPresetExcludedCodes),
       ),
     )
     savePresets(nextCustomPresets)
@@ -856,6 +875,9 @@ export default function App() {
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 {code.recommended ? <Badge variant="secondary">Recommended</Badge> : null}
+                                {defaultPresetExcludedCodes.includes(code.code) ? (
+                                  <Badge variant="outline">Manual only</Badge>
+                                ) : null}
                                 {code.rateGroupName ? <Badge variant="outline">{code.rateGroupName}</Badge> : null}
                                 {code.custom ? <Badge variant="secondary">Custom</Badge> : null}
                                 {favoriteCodes.includes(code.code) ? <Badge>Favorite</Badge> : null}

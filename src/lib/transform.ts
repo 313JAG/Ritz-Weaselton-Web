@@ -124,6 +124,11 @@ export function uniqueCodes(values: string[]) {
   return [...new Set(values.map((value) => String(value).trim().toUpperCase()).filter(Boolean))]
 }
 
+export function filterDefaultPresetCodes(values: string[], excludedCodes: string[]) {
+  const exclusions = new Set(uniqueCodes(excludedCodes))
+  return uniqueCodes(values).filter((code) => !exclusions.has(code))
+}
+
 export function distanceBetweenCoordinatesMeters(
   latitudeA: number | null,
   longitudeA: number | null,

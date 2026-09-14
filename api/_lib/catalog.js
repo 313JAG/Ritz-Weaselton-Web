@@ -1,8 +1,14 @@
 const fs = require('node:fs')
 const path = require('node:path')
-const { DEFAULT_PRESETS, RATE_CODE_GROUPS, RECOMMENDED_CODES } = require('../../v2/lib/defaults')
+const {
+  DEFAULT_PRESETS,
+  DEFAULT_RATE_PREFERENCES,
+  RATE_CODE_GROUPS,
+  RECOMMENDED_CODES,
+} = require('../../v2/lib/defaults')
 
 const LEGACY_CODES_FILE = path.join(__dirname, '..', '..', 'marriott_corporate_codes.md')
+const DEFAULT_PRESET_EXCLUSIONS = new Set(DEFAULT_RATE_PREFERENCES.excludedFromDefaultPresetCodes)
 
 function normalizeCode(code) {
   return String(code || '')
@@ -65,7 +71,7 @@ function categoryPreset(category, codes) {
     id: slugify(category),
     name: category,
     icon: 'folder',
-    codes: [...codes],
+    codes: codes.filter((code) => !DEFAULT_PRESET_EXCLUSIONS.has(code)),
     isDefault: false,
   }
 }

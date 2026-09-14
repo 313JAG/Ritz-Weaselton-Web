@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { addDaysToLocalDate, getLocalDate, normalizeStayDates } from "../src/lib/destinations"
-import { distanceBetweenCoordinatesMeters, summarizeProperties, type CodeResult } from "../src/lib/transform"
+import {
+  distanceBetweenCoordinatesMeters,
+  filterDefaultPresetCodes,
+  summarizeProperties,
+  type CodeResult,
+} from "../src/lib/transform"
 
 const hotel = (
   propertyId: string,
@@ -154,6 +159,15 @@ describe("property comparison", () => {
 
   it("returns null distance when either property lacks coordinates", () => {
     expect(distanceBetweenCoordinatesMeters(42.33, -83.04, null, null)).toBeNull()
+  })
+})
+
+describe("default rate presets", () => {
+  it("omits manual-only rates without removing them from explicit selections", () => {
+    const codes = ["DTC", "GOV", "AAA", "MMF", "GEE"]
+
+    expect(filterDefaultPresetCodes(codes, ["GOV", "AAA", "MMF"])).toEqual(["DTC", "GEE"])
+    expect(codes).toContain("GOV")
   })
 })
 
