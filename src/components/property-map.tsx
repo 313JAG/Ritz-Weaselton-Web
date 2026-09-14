@@ -7,6 +7,8 @@ import { loadAppleMapKit } from "@/lib/apple-mapkit"
 type PropertyMapProps = {
   properties: PropertySummary[]
   selectedProperty: string | null
+  winnerProperty?: string | null
+  fitKey?: string
   onSelect: (key: string) => void
 }
 
@@ -18,11 +20,24 @@ function glyphLabel(property: PropertySummary) {
   return String(rounded)
 }
 
-export function PropertyMap({ properties, selectedProperty, onSelect }: PropertyMapProps) {
+function markerColor(key: string, selectedProperty: string | null, winnerProperty: string | null) {
+  if (key === selectedProperty) return "#7f352b"
+  if (key === winnerProperty) return "#285b4b"
+  return "#c08f52"
+}
+
+export function PropertyMap({
+  properties,
+  selectedProperty,
+  winnerProperty = null,
+  fitKey = "",
+  onSelect,
+}: PropertyMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
   const annotationsRef = useRef<Map<string, any>>(new Map())
-  const fittedRef = useRef(false)
+  const lastFitKeyRef = useRef("")
+  const onSelectRef = useRef(onSelect)
   const [state, setState] = useState<"loading" | "ready" | "error">("loading")
 
   const points = useMemo(
@@ -31,13 +46,18 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
         (property) =>
           property.bestPrice !== null &&
           typeof property.latitude === "number" &&
-          typeof property.longitude === "number"
+          typeof property.longitude === "number",
       ),
-    [properties]
+    [properties],
   )
+  const hasPoints = points.length > 0
 
   useEffect(() => {
-    if (!points.length || !containerRef.current || mapRef.current) return
+    onSelectRef.current = onSelect
+  }, [onSelect])
+
+  useEffect(() => {
+    if (!hasPoints || !containerRef.current || mapRef.current) return
 
     let cancelled = false
 
@@ -71,8 +91,14 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
 
     return () => {
       cancelled = true
+      if (mapRef.current && typeof mapRef.current.destroy === "function") {
+        mapRef.current.destroy()
+      }
+      mapRef.current = null
+      annotationsRef.current.clear()
+      lastFitKeyRef.current = ""
     }
-  }, [points.length])
+  }, [hasPoints])
 
   useEffect(() => {
     if (state !== "ready" || !mapRef.current || !window.mapkit) return
@@ -90,15 +116,15 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
       const annotation = new mapkit.MarkerAnnotation(
         new mapkit.Coordinate(property.latitude as number, property.longitude as number),
         {
-          title: "",
-          subtitle: "",
-          color: property.key === selectedProperty ? "#b76419" : "#caa06a",
+          title: property.name,
+          subtitle: `${glyphLabel(property)} ${property.currency || ""}`.trim(),
+          color: markerColor(property.key, null, winnerProperty),
           glyphText: glyphLabel(property),
-        }
+        },
       )
 
       if (typeof annotation.addEventListener === "function") {
-          annotation.addEventListener("select", () => onSelect(property.key))
+        annotation.addEventListener("select", () => onSelectRef.current(property.key))
       }
 
       annotationsRef.current.set(property.key, annotation)
@@ -107,24 +133,32 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
 
     if (annotations.length) {
       map.addAnnotations(annotations)
-      if (!fittedRef.current) {
-        map.showItems(annotations, {
-          animate: true,
-          padding: new mapkit.Padding(80, 56, 80, 56),
-        })
-        fittedRef.current = true
-      }
     }
-  }, [onSelect, points, state])
+  }, [points, state, winnerProperty])
+
+  useEffect(() => {
+    if (state !== "ready" || !mapRef.current || !window.mapkit || lastFitKeyRef.current === fitKey) {
+      return
+    }
+
+    const annotations = [...annotationsRef.current.values()]
+    if (!annotations.length) return
+
+    mapRef.current.showItems(annotations, {
+      animate: true,
+      padding: new window.mapkit.Padding(96, 72, 120, 72),
+    })
+    lastFitKeyRef.current = fitKey
+  }, [fitKey, points.length, state])
 
   useEffect(() => {
     if (state !== "ready") return
 
-    for (const [name, annotation] of annotationsRef.current.entries()) {
-      annotation.color = name === selectedProperty ? "#b76419" : "#caa06a"
-      annotation.selected = name === selectedProperty
+    for (const [key, annotation] of annotationsRef.current.entries()) {
+      annotation.color = markerColor(key, selectedProperty, winnerProperty)
+      annotation.selected = key === selectedProperty
     }
-  }, [selectedProperty, state])
+  }, [selectedProperty, state, winnerProperty])
 
   if (state === "error") {
     return (
@@ -134,7 +168,9 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
             <span className="rw-google-placeholder-dot" />
           </EmptyMedia>
           <EmptyTitle>Apple Maps failed to load</EmptyTitle>
-          <EmptyDescription>The search results still work, but the Apple Maps view could not initialize in this session.</EmptyDescription>
+          <EmptyDescription>
+            The search results still work, but the Apple Maps view could not initialize in this session.
+          </EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
@@ -157,11 +193,9 @@ export function PropertyMap({ properties, selectedProperty, onSelect }: Property
   }
 
   return (
-    <div className="grid gap-3">
-      <div className="min-h-[32rem] overflow-hidden rounded-none border border-border/70" ref={containerRef} />
-      <p className="text-xs text-muted-foreground">
-        Apple Maps shows your hotel results as price-first pins. Selecting a pin or hotel card keeps the map and ranked list in sync.
-      </p>
+    <div className="rw-property-map">
+      <div className="rw-property-map-canvas" ref={containerRef} />
+      {state === "loading" ? <span className="rw-map-loading">Loading price map…</span> : null}
     </div>
   )
 }
