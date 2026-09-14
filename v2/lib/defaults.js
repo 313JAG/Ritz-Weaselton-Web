@@ -1,7 +1,11 @@
-const RECOMMENDED_CODES = ['AAA', 'ARP', 'S9R', 'GOV', 'XYD', 'ADP', 'GEE', 'CVS', 'FRD', 'PAG', 'MMM', 'CAT', 'ALL', 'GAP', 'COS', 'VSA', 'LOW', 'HD1', 'TXI', 'TOY', 'SW8', 'FED', 'UPS', 'DTC', 'ACC', 'MCK', 'MCO', 'EYC', 'PCW', 'KPM', 'GS1', 'JPM', 'MOS', 'UBS', 'BOE', 'AMZ', 'BOA', 'BPA', 'GGL', 'GMC', 'ATT', 'APL', 'DIS', 'AMX']
+const EXCLUDED_FROM_DEFAULT_PRESET_CODES = ['GOV', 'AAA', 'MMF']
 
-// Group metadata keeps eligibility policy out of the UI. Both preference lists
-// intentionally remain empty until the user chooses which groups to skip.
+const RECOMMENDED_CODES = ['AAA', 'ARP', 'S9R', 'GOV', 'XYD', 'ADP', 'GEE', 'CVS', 'FRD', 'PAG', 'MMM', 'CAT', 'ALL', 'GAP', 'COS', 'VSA', 'LOW', 'HD1', 'TXI', 'TOY', 'SW8', 'FED', 'UPS', 'DTC', 'ACC', 'MCK', 'MCO', 'EYC', 'PCW', 'KPM', 'GS1', 'JPM', 'MOS', 'UBS', 'BOE', 'AMZ', 'BOA', 'BPA', 'GGL', 'GMC', 'ATT', 'APL', 'DIS', 'AMX'].filter(
+  (code) => !EXCLUDED_FROM_DEFAULT_PRESET_CODES.includes(code),
+)
+
+// Group metadata keeps eligibility policy out of the UI. Exact exclusions are
+// code-based so MMF can be manual-only without hiding every associate rate.
 const RATE_CODE_GROUPS = [
   {
     id: 'eligibility',
@@ -18,6 +22,7 @@ const RATE_CODE_GROUPS = [
 const DEFAULT_RATE_PREFERENCES = {
   deEmphasizedGroupIds: [],
   excludedFromBroadScanGroupIds: [],
+  excludedFromDefaultPresetCodes: EXCLUDED_FROM_DEFAULT_PRESET_CODES,
 }
 
 const DEFAULT_PRESETS = [
@@ -120,7 +125,10 @@ const DEFAULT_PRESETS = [
     codes: ['BCE', 'BMO', 'ROG', 'TDB', 'BOM', 'SCO', 'IRV', 'SLF', 'TLS', '57845'],
     isDefault: true,
   },
-]
+].map((preset) => ({
+  ...preset,
+  codes: preset.codes.filter((code) => !EXCLUDED_FROM_DEFAULT_PRESET_CODES.includes(code)),
+}))
 
 const CODE_DISPLAY = {
   BASELINE: 'STD',
