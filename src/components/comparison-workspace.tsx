@@ -29,7 +29,12 @@ function formatDistanceFromCheapest(meters: number | null) {
 }
 
 function priceDelta(property: PropertySummary, cheapest: PropertySummary | null) {
-  if (property.bestPrice === null || cheapest?.bestPrice === null || !cheapest) {
+  if (
+    property.bestPrice === null ||
+    cheapest?.bestPrice === null ||
+    !cheapest ||
+    property.currency !== cheapest.currency
+  ) {
     return null
   }
   return Math.max(property.bestPrice - cheapest.bestPrice, 0)
@@ -189,6 +194,7 @@ export function ComparisonWorkspace({
   const completed = job?.progress?.completedCodes || 0
   const total = job?.progress?.totalCodes || 0
   const progress = total ? Math.round((completed / total) * 100) : 0
+  const activeDelta = active ? priceDelta(active, cheapest) : null
 
   function showDetails(key: string) {
     onSelect(key)
@@ -273,7 +279,7 @@ export function ComparisonWorkspace({
           <div className="rw-winner-copy">
             <div className="rw-winner-label">
               <SparkleIcon weight="fill" />
-              Lowest rate found
+              Lowest {cheapest.currency || "comparable"} rate found
             </div>
             <h2>{cheapest.name}</h2>
             <p>{[cheapest.brandName, cheapest.distance].filter(Boolean).join(" · ")}</p>
@@ -324,9 +330,11 @@ export function ComparisonWorkspace({
                 <strong>{active.name}</strong>
                 <small>
                   {formatCurrency(active.bestPrice, active.currency)} nightly
-                  {priceDelta(active, cheapest)
-                    ? ` · +${formatCurrency(priceDelta(active, cheapest), active.currency)}`
-                    : ""}
+                  {activeDelta
+                    ? ` · +${formatCurrency(activeDelta, active.currency)}`
+                    : active.currency !== cheapest?.currency
+                      ? " · different currency"
+                      : ""}
                 </small>
               </div>
               <Button onClick={() => showDetails(active.key)} size="sm">
@@ -367,7 +375,11 @@ export function ComparisonWorkspace({
                     <span className="rw-alternative-price">
                       <strong>{formatCurrency(property.bestPrice, property.currency)}</strong>
                       <small>
-                        {delta === null ? "No price" : `+${formatCurrency(delta, property.currency)} / night`}
+                        {delta === null
+                          ? property.bestPrice === null
+                            ? "No price"
+                            : "Different currency"
+                          : `+${formatCurrency(delta, property.currency)} / night`}
                       </small>
                     </span>
                   </button>
