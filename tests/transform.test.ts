@@ -119,6 +119,39 @@ describe("property comparison", () => {
     expect(summarizeProperties(results).map((property) => property.propertyId)).toEqual(["B", "C", "A"])
   })
 
+  it("does not crown a numerically lower foreign-currency rate in a border market", () => {
+    const cadHotel = {
+      ...hotel("CAD", "Windsor hotel", 134, 42.32, -83.04),
+      currency: "CAD",
+    }
+    const results: CodeResult[] = [
+      {
+        code: "BASELINE",
+        success: true,
+        error: null,
+        url: "https://example.com/std",
+        hotels: [
+          hotel("USD1", "Detroit hotel", 170, 42.33, -83.04),
+          hotel("USD2", "Another Detroit hotel", 180, 42.34, -83.04),
+          { ...cadHotel, price: 168 },
+        ],
+      },
+      {
+        code: "DTC",
+        success: true,
+        error: null,
+        url: "https://example.com/dtc",
+        hotels: [
+          hotel("USD1", "Detroit hotel", 152, 42.33, -83.04),
+          hotel("USD2", "Another Detroit hotel", 160, 42.34, -83.04),
+          cadHotel,
+        ],
+      },
+    ]
+
+    expect(summarizeProperties(results).map((property) => property.propertyId)).toEqual(["USD1", "USD2", "CAD"])
+  })
+
   it("returns null distance when either property lacks coordinates", () => {
     expect(distanceBetweenCoordinatesMeters(42.33, -83.04, null, null)).toBeNull()
   })

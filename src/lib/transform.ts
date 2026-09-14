@@ -308,7 +308,28 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
         : 0
   }
 
+  const pricedProperties = [...properties.values()].filter((property) => property.bestPrice !== null)
+  const currencyCounts = new Map<string, number>()
+  for (const property of pricedProperties) {
+    if (!property.currency) continue
+    currencyCounts.set(property.currency, (currencyCounts.get(property.currency) || 0) + 1)
+  }
+  const comparisonCurrency = [...currencyCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || null
+
   const ranked = [...properties.values()].sort((left, right) => {
+    if ((left.bestPrice === null) !== (right.bestPrice === null)) {
+      return left.bestPrice === null ? 1 : -1
+    }
+    if (comparisonCurrency) {
+      const leftMatchesComparison = left.currency === comparisonCurrency
+      const rightMatchesComparison = right.currency === comparisonCurrency
+      if (leftMatchesComparison !== rightMatchesComparison) {
+        return leftMatchesComparison ? -1 : 1
+      }
+    }
+    if (left.currency !== right.currency) {
+      return (left.currency || "").localeCompare(right.currency || "")
+    }
     const priceDifference = (left.bestPrice ?? Number.POSITIVE_INFINITY) - (right.bestPrice ?? Number.POSITIVE_INFINITY)
     if (priceDifference !== 0) return priceDifference
     if (right.savings !== left.savings) return right.savings - left.savings
