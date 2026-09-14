@@ -1,49 +1,24 @@
-const RECOMMENDED_CODES = [
-  'AAA',
-  'ARP',
-  'S9R',
-  'GOV',
-  'XYD',
-  'ADP',
-  'GEE',
-  'CVS',
-  'FRD',
-  'PAG',
-  'MMM',
-  'CAT',
-  'ALL',
-  'GAP',
-  'COS',
-  'VSA',
-  'LOW',
-  'HD1',
-  'TXI',
-  'TOY',
-  'SW8',
-  'FED',
-  'UPS',
-  'DTC',
-  'ACC',
-  'MCK',
-  'MCO',
-  'EYC',
-  'PCW',
-  'KPM',
-  'GS1',
-  'JPM',
-  'MOS',
-  'UBS',
-  'BOE',
-  'AMZ',
-  'BOA',
-  'BPA',
-  'GGL',
-  'GMC',
-  'ATT',
-  'APL',
-  'DIS',
-  'AMX',
-];
+const RECOMMENDED_CODES = ['AAA', 'ARP', 'S9R', 'GOV', 'XYD', 'ADP', 'GEE', 'CVS', 'FRD', 'PAG', 'MMM', 'CAT', 'ALL', 'GAP', 'COS', 'VSA', 'LOW', 'HD1', 'TXI', 'TOY', 'SW8', 'FED', 'UPS', 'DTC', 'ACC', 'MCK', 'MCO', 'EYC', 'PCW', 'KPM', 'GS1', 'JPM', 'MOS', 'UBS', 'BOE', 'AMZ', 'BOA', 'BPA', 'GGL', 'GMC', 'ATT', 'APL', 'DIS', 'AMX']
+
+// Group metadata keeps eligibility policy out of the UI. Both preference lists
+// intentionally remain empty until the user chooses which groups to skip.
+const RATE_CODE_GROUPS = [
+  {
+    id: 'eligibility',
+    name: 'Eligibility rates',
+    codes: ['AAA', 'GOV'],
+  },
+  {
+    id: 'marriott-associate',
+    name: 'Marriott associate rates',
+    codes: ['MMP', 'MMF', 'MM4', 'EMP'],
+  },
+]
+
+const DEFAULT_RATE_PREFERENCES = {
+  deEmphasizedGroupIds: [],
+  excludedFromBroadScanGroupIds: [],
+}
 
 const DEFAULT_PRESETS = [
   {
@@ -145,14 +120,16 @@ const DEFAULT_PRESETS = [
     codes: ['BCE', 'BMO', 'ROG', 'TDB', 'BOM', 'SCO', 'IRV', 'SLF', 'TLS', '57845'],
     isDefault: true,
   },
-];
+]
 
 const CODE_DISPLAY = {
   BASELINE: 'STD',
-};
+}
 
 module.exports = {
   CODE_DISPLAY,
+  DEFAULT_RATE_PREFERENCES,
   DEFAULT_PRESETS,
+  RATE_CODE_GROUPS,
   RECOMMENDED_CODES,
-};
+}
