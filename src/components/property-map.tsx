@@ -159,7 +159,7 @@ export function PropertyMap({
       annotation.color = markerColor(key, selectedProperty, winnerProperty)
       annotation.selected = key === selectedProperty
     }
-  }, [selectedProperty, state, winnerProperty])
+  }, [points, selectedProperty, state, winnerProperty])
 
   if (state === "error") {
     return (

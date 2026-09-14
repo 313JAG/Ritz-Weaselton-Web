@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { ArrowClockwiseIcon, MapPinIcon, SparkleIcon } from "@phosphor-icons/react"
 
 import { PropertyMap } from "@/components/property-map"
@@ -183,6 +183,10 @@ export function ComparisonWorkspace({
   const cheapest = properties.find((property) => property.bestPrice !== null) || null
   const active = properties.find((property) => property.key === selectedProperty) || cheapest || properties[0] || null
   const alternatives = visibleProperties.filter((property) => property.key !== cheapest?.key)
+  const propertyRanks = useMemo(
+    () => new Map(properties.map((property, index) => [property.key, index + 1])),
+    [properties],
+  )
   const stayNights = Math.max(
     1,
     Math.round(
@@ -194,6 +198,7 @@ export function ComparisonWorkspace({
   const completed = job?.progress?.completedCodes || 0
   const total = job?.progress?.totalCodes || 0
   const progress = total ? Math.round((completed / total) * 100) : 0
+  const pricedPropertyCount = properties.filter((property) => property.bestPrice !== null).length
   const activeDelta = active ? priceDelta(active, cheapest) : null
 
   function showDetails(key: string) {
@@ -310,7 +315,7 @@ export function ComparisonWorkspace({
               <p className="rw-eyebrow">Explore the area</p>
               <strong>Every pin is the hotel&apos;s lowest rate</strong>
             </div>
-            <span>{properties.length} priced stays</span>
+            <span>{pricedPropertyCount} priced stays</span>
           </div>
           <PropertyMap
             fitKey={`${job.id}:${job.status === "completed" ? "complete" : "running"}`}
@@ -361,13 +366,14 @@ export function ComparisonWorkspace({
           <div className="rw-alternative-list">
             {alternatives.map((property, index) => {
               const delta = priceDelta(property, cheapest)
+              const rank = propertyRanks.get(property.key) || index + 2
               return (
                 <article
                   className={cn("rw-alternative-row", active?.key === property.key && "is-selected")}
                   key={property.key}
                 >
                   <button onClick={() => onSelect(property.key)} type="button">
-                    <span className="rw-rank">{String(index + 2).padStart(2, "0")}</span>
+                    <span className="rw-rank">{String(rank).padStart(2, "0")}</span>
                     <span className="rw-alternative-name">
                       <strong>{property.name}</strong>
                       <small>{formatDistanceFromCheapest(property.distanceFromCheapestMeters)}</small>
