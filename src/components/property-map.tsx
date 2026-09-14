@@ -60,6 +60,7 @@ export function PropertyMap({
     if (!hasPoints || !containerRef.current || mapRef.current) return
 
     let cancelled = false
+    const annotations = annotationsRef.current
 
     loadAppleMapKit()
       .then((mapkit) => {
@@ -95,7 +96,7 @@ export function PropertyMap({
         mapRef.current.destroy()
       }
       mapRef.current = null
-      annotationsRef.current.clear()
+      annotations.clear()
       lastFitKeyRef.current = ""
     }
   }, [hasPoints])
