@@ -2,6 +2,8 @@ export type CatalogCode = {
   code: string
   company: string
   recommended?: boolean
+  rateGroupId?: string | null
+  rateGroupName?: string | null
 }
 
 export type CatalogPreset = {
@@ -65,7 +67,14 @@ export type SearchJob = {
     queuedCodes?: number
     workerLimit?: number
   }
-  codeStates?: Record<string, { status: "queued" | "running" | "completed" | "failed"; attempts: number; error: string | null }>
+  codeStates?: Record<
+    string,
+    {
+      status: "queued" | "running" | "completed" | "failed"
+      attempts: number
+      error: string | null
+    }
+  >
   results: CodeResult[]
 }
 
@@ -83,6 +92,7 @@ export type PropertySummary = {
   longitude: number | null
   locationSource: string | null
   locationLabel: string | null
+  distanceFromCheapestMeters: number | null
   baselinePrice: number | null
   currency: string | null
   bestCode: string | null
@@ -114,11 +124,35 @@ export function uniqueCodes(values: string[]) {
   return [...new Set(values.map((value) => String(value).trim().toUpperCase()).filter(Boolean))]
 }
 
-export function mergeCodes(
-  remoteCodes: CatalogCode[],
-  customCodes: CatalogCode[],
-  favoriteCodes: string[]
+export function filterDefaultPresetCodes(values: string[], excludedCodes: string[]) {
+  const exclusions = new Set(uniqueCodes(excludedCodes))
+  return uniqueCodes(values).filter((code) => !exclusions.has(code))
+}
+
+export function distanceBetweenCoordinatesMeters(
+  latitudeA: number | null,
+  longitudeA: number | null,
+  latitudeB: number | null,
+  longitudeB: number | null,
 ) {
+  if (latitudeA === null || longitudeA === null || latitudeB === null || longitudeB === null) {
+    return null
+  }
+
+  const toRadians = (value: number) => (value * Math.PI) / 180
+  const earthRadiusMeters = 6_371_000
+  const latitudeDelta = toRadians(latitudeB - latitudeA)
+  const longitudeDelta = toRadians(longitudeB - longitudeA)
+  const startLatitude = toRadians(latitudeA)
+  const endLatitude = toRadians(latitudeB)
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(longitudeDelta / 2) ** 2
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine))
+}
+
+export function mergeCodes(remoteCodes: CatalogCode[], customCodes: CatalogCode[], favoriteCodes: string[]) {
   const merged = new Map<string, CatalogCode & { favorite?: boolean; custom?: boolean }>()
 
   for (const code of remoteCodes) {
@@ -158,7 +192,7 @@ export function mergePresets(
   defaults: CatalogPreset[],
   customs: CatalogPreset[],
   recommendedCodes: string[],
-  allCodes: string[]
+  allCodes: string[],
 ) {
   return [...defaults, ...customs].map((preset) => ({
     ...preset,
@@ -175,7 +209,10 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
   const properties = new Map<string, PropertySummary>()
   const baseline = results.find((result) => result.code === "BASELINE")
   const baselinePrices = new Map(
-    (baseline?.hotels || []).map((hotel) => [hotel.propertyId || `name:${hotel.name.toLowerCase()}`, typeof hotel.price === "number" ? hotel.price : null])
+    (baseline?.hotels || []).map((hotel) => [
+      hotel.propertyId || `name:${hotel.name.toLowerCase()}`,
+      typeof hotel.price === "number" ? hotel.price : null,
+    ]),
   )
 
   for (const result of results) {
@@ -195,6 +232,7 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
         longitude: hotel.longitude ?? null,
         locationSource: hotel.locationSource || null,
         locationLabel: hotel.locationLabel || null,
+        distanceFromCheapestMeters: null,
         baselinePrice: null,
         currency: hotel.currency || null,
         bestCode: null,
@@ -254,12 +292,15 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
     // must surface the lowest available selected code; standard is only the
     // fallback when no selected code returns a price.
     const pricedCodes = property.rates.filter((rate) => rate.available && rate.code !== "BASELINE")
-    const best = (pricedCodes.length ? pricedCodes : property.rates.filter((rate) => rate.available))
-      .reduce<typeof property.rates[number] | null>((winner, rate) =>
+    const best = (pricedCodes.length ? pricedCodes : property.rates.filter((rate) => rate.available)).reduce<
+      (typeof property.rates)[number] | null
+    >(
+      (winner, rate) =>
         !winner || (rate.price ?? Number.POSITIVE_INFINITY) < (winner.price ?? Number.POSITIVE_INFINITY)
           ? rate
           : winner,
-      null)
+      null,
+    )
     property.bestCode = best?.code ?? null
     property.bestCodeLabel = best?.label ?? null
     property.bestPrice = best?.price ?? null
@@ -272,13 +313,56 @@ export function summarizeProperties(results: CodeResult[], codeCompanies: Record
         : 0
   }
 
-  return [...properties.values()].sort((left, right) => {
+  const pricedProperties = [...properties.values()].filter((property) => property.bestPrice !== null)
+  const currencyCounts = new Map<string, number>()
+  for (const property of pricedProperties) {
+    if (!property.currency) continue
+    currencyCounts.set(property.currency, (currencyCounts.get(property.currency) || 0) + 1)
+  }
+  const comparisonCurrency = [...currencyCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || null
+
+  const ranked = [...properties.values()].sort((left, right) => {
+    if ((left.bestPrice === null) !== (right.bestPrice === null)) {
+      return left.bestPrice === null ? 1 : -1
+    }
+    if (comparisonCurrency) {
+      const leftMatchesComparison = left.currency === comparisonCurrency
+      const rightMatchesComparison = right.currency === comparisonCurrency
+      if (leftMatchesComparison !== rightMatchesComparison) {
+        return leftMatchesComparison ? -1 : 1
+      }
+    }
+    if (left.currency !== right.currency) {
+      return (left.currency || "").localeCompare(right.currency || "")
+    }
+    const priceDifference = (left.bestPrice ?? Number.POSITIVE_INFINITY) - (right.bestPrice ?? Number.POSITIVE_INFINITY)
+    if (priceDifference !== 0) return priceDifference
     if (right.savings !== left.savings) return right.savings - left.savings
-    return (left.bestPrice ?? Number.POSITIVE_INFINITY) - (right.bestPrice ?? Number.POSITIVE_INFINITY)
+    return left.name.localeCompare(right.name)
   })
+
+  const cheapest = ranked.find((property) => property.bestPrice !== null)
+  if (cheapest) {
+    for (const property of ranked) {
+      property.distanceFromCheapestMeters = distanceBetweenCoordinatesMeters(
+        cheapest.latitude,
+        cheapest.longitude,
+        property.latitude,
+        property.longitude,
+      )
+    }
+  }
+
+  return ranked
 }
 
-export function getInsights(history: Array<{ destination: string; bestSavings: number; topWinningCode: string | null }>) {
+export function getInsights(
+  history: Array<{
+    destination: string
+    bestSavings: number
+    topWinningCode: string | null
+  }>,
+) {
   const destinationCounts = new Map<string, number>()
   const codeCounts = new Map<string, number>()
   let bestSavings = 0
