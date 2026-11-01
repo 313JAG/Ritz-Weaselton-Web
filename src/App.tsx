@@ -1,1 +1,1 @@
-@/tmp/App_to_push.tsx
+file:///tmp/App_to_push.tsx
