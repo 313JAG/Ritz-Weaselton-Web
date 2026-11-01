@@ -323,4 +323,97 @@ export function ComparisonWorkspace({
               </div>
             </div>
           ) : (
-            <div className="r
+            <div className="rw-winner-strip is-waiting">
+              <div className="rw-winner-strip-copy">
+                <span className="rw-winner-label">Lowest rate</span>
+                <strong>{isRunning ? "Searching live Marriott rates…" : "No priced hotels yet"}</strong>
+                <small>The cheapest stay appears here as soon as the first rate lands.</small>
+              </div>
+            </div>
+          )}
+
+          <div className="rw-map-stage">
+            <div className="rw-map-heading">
+              <div>
+                <p className="rw-eyebrow">Price map</p>
+                <strong>Tap a pin to inspect a stay</strong>
+              </div>
+              <span>{pricedPropertyCount} priced</span>
+            </div>
+
+            <PropertyMap
+              fitKey={job.id}
+              onSelect={onSelect}
+              properties={properties}
+              selectedProperty={active?.key || null}
+              winnerProperty={cheapest?.key || null}
+            />
+
+            {showMapSelection && active ? (
+              <div className="rw-map-selection">
+                <div>
+                  <span>{formatDistanceFromCheapest(active.distanceFromCheapestMeters, false)}</span>
+                  <strong>{active.name}</strong>
+                  <small>
+                    {formatCurrency(active.bestPrice, active.currency)} nightly
+                    {activeDelta
+                      ? ` · +${formatCurrency(activeDelta, active.currency)}`
+                      : active.currency !== cheapest?.currency
+                        ? " · different currency"
+                        : ""}
+                  </small>
+                </div>
+                <Button onClick={() => showDetails(active.key)} size="sm">
+                  View rates
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </article>
+
+        <aside className="rw-alternatives">
+          <div className="rw-alternatives-head">
+            <div>
+              <span>Ranked stays</span>
+              <strong>Cheapest first</strong>
+            </div>
+            <Badge variant="secondary">{visibleProperties.length}</Badge>
+          </div>
+          <Input
+            aria-label="Filter hotels"
+            onChange={(event) => onPropertyQuery(event.target.value)}
+            placeholder="Filter by hotel or brand"
+            value={propertyQuery}
+          />
+          <div className="rw-alternative-list" ref={listRef}>
+            {visibleProperties.map((property) => {
+              const delta = priceDelta(property, cheapest)
+              const rank = propertyRanks.get(property.key) || 0
+              const isCheapest = property.key === cheapest?.key
+              return (
+                <article
+                  className={cn(
+                    "rw-alternative-row",
+                    active?.key === property.key && "is-selected",
+                    isCheapest && "is-cheapest",
+                  )}
+                  data-property-key={property.key}
+                  key={property.key}
+                >
+                  <button onClick={() => onSelect(property.key)} type="button">
+                    <span className="rw-rank">{String(rank).padStart(2, "0")}</span>
+                    <span className="rw-alternative-name">
+                      <strong>
+                        {property.name}
+                        {isCheapest ? <em>Lowest</em> : null}
+                      </strong>
+                      <small>{formatDistanceFromCheapest(property.distanceFromCheapestMeters, isCheapest)}</small>
+                    </span>
+                    <span className="rw-alternative-price">
+                      <strong>{formatCurrency(property.bestPrice, property.currency)}</strong>
+                      <small>
+                        {isCheapest
+                          ? property.bestCodeLabel
+                            ? `via ${property.bestCodeLabel}`
+                            : "Best found"
+                          : delta =
