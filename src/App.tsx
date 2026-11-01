@@ -1,1 +1,1 @@
-file:///tmp/App_to_push.tsx
+PLACEHOLDER_LOAD_FROM_FILE
