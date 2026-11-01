@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import {
+  diffMapPins,
+  type MapPinSnapshot,
+  toMapPinSnapshots,
+} from "@/lib/map-annotations"
 import { type PropertySummary } from "@/lib/transform"
 import { loadAppleMapKit } from "@/lib/apple-mapkit"
 
@@ -10,20 +15,6 @@ type PropertyMapProps = {
   winnerProperty?: string | null
   fitKey?: string
   onSelect: (key: string) => void
-}
-
-function glyphLabel(property: PropertySummary) {
-  if (property.bestPrice === null) return "—"
-
-  const rounded = Math.round(property.bestPrice)
-  if (rounded > 999) return "999+"
-  return String(rounded)
-}
-
-function markerColor(key: string, selectedProperty: string | null, winnerProperty: string | null) {
-  if (key === selectedProperty) return "#7f352b"
-  if (key === winnerProperty) return "#285b4b"
-  return "#c08f52"
 }
 
 export function PropertyMap({
@@ -36,28 +27,32 @@ export function PropertyMap({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
   const annotationsRef = useRef<Map<string, any>>(new Map())
+  const pinSnapshotsRef = useRef<MapPinSnapshot[]>([])
   const lastFitKeyRef = useRef("")
+  const lastFitSignatureRef = useRef("")
   const onSelectRef = useRef(onSelect)
   const [state, setState] = useState<"loading" | "ready" | "error">("loading")
+  const [mapMounted, setMapMounted] = useState(false)
 
-  const points = useMemo(
-    () =>
-      properties.filter(
-        (property) =>
-          property.bestPrice !== null &&
-          typeof property.latitude === "number" &&
-          typeof property.longitude === "number",
-      ),
-    [properties],
+  const pins = useMemo(
+    () => toMapPinSnapshots(properties, selectedProperty, winnerProperty),
+    [properties, selectedProperty, winnerProperty],
   )
-  const hasPoints = points.length > 0
+  const hasPoints = pins.length > 0
+  const pinSignature = pins.map((pin) => pin.key).join("|")
 
   useEffect(() => {
     onSelectRef.current = onSelect
   }, [onSelect])
 
+  // Keep the map canvas mounted once we have ever had priced points so progressive
+  // search updates never tear the MapKit instance down mid-run.
   useEffect(() => {
-    if (!hasPoints || !containerRef.current || mapRef.current) return
+    if (hasPoints) setMapMounted(true)
+  }, [hasPoints])
+
+  useEffect(() => {
+    if (!mapMounted || !containerRef.current || mapRef.current) return
 
     let cancelled = false
     const annotations = annotationsRef.current
@@ -97,89 +92,101 @@ export function PropertyMap({
       }
       mapRef.current = null
       annotations.clear()
+      pinSnapshotsRef.current = []
       lastFitKeyRef.current = ""
+      lastFitSignatureRef.current = ""
     }
-  }, [hasPoints])
+  }, [mapMounted])
 
   useEffect(() => {
     if (state !== "ready" || !mapRef.current || !window.mapkit) return
 
     const mapkit = window.mapkit
     const map = mapRef.current
-    const existing = [...annotationsRef.current.values()]
+    const { added, updated, removed } = diffMapPins(pinSnapshotsRef.current, pins)
 
-    if (existing.length) {
-      map.removeAnnotations(existing)
-      annotationsRef.current.clear()
+    for (const key of removed) {
+      const annotation = annotationsRef.current.get(key)
+      if (!annotation) continue
+      map.removeAnnotation(annotation)
+      annotationsRef.current.delete(key)
     }
 
-    const annotations = points.map((property) => {
-      const annotation = new mapkit.MarkerAnnotation(
-        new mapkit.Coordinate(property.latitude as number, property.longitude as number),
-        {
-          title: property.name,
-          subtitle: `${glyphLabel(property)} ${property.currency || ""}`.trim(),
-          color: markerColor(property.key, null, winnerProperty),
-          glyphText: glyphLabel(property),
-        },
-      )
-
-      if (typeof annotation.addEventListener === "function") {
-        annotation.addEventListener("select", () => onSelectRef.current(property.key))
+    for (const pin of updated) {
+      const annotation = annotationsRef.current.get(pin.key)
+      if (!annotation) continue
+      annotation.title = pin.name
+      annotation.subtitle = pin.subtitle
+      annotation.glyphText = pin.glyph
+      annotation.color = pin.color
+      annotation.selected = pin.key === selectedProperty
+      if (
+        annotation.coordinate?.latitude !== pin.latitude ||
+        annotation.coordinate?.longitude !== pin.longitude
+      ) {
+        annotation.coordinate = new mapkit.Coordinate(pin.latitude, pin.longitude)
       }
+    }
 
-      annotationsRef.current.set(property.key, annotation)
-      return annotation
-    })
+    if (added.length) {
+      const annotations = added.map((pin) => {
+        const annotation = new mapkit.MarkerAnnotation(new mapkit.Coordinate(pin.latitude, pin.longitude), {
+          title: pin.name,
+          subtitle: pin.subtitle,
+          color: pin.color,
+          glyphText: pin.glyph,
+        })
 
-    if (annotations.length) {
+        if (typeof annotation.addEventListener === "function") {
+          annotation.addEventListener("select", () => onSelectRef.current(pin.key))
+        }
+
+        annotation.selected = pin.key === selectedProperty
+        annotationsRef.current.set(pin.key, annotation)
+        return annotation
+      })
       map.addAnnotations(annotations)
     }
-  }, [points, state, winnerProperty])
+
+    pinSnapshotsRef.current = pins
+  }, [pins, selectedProperty, state])
 
   useEffect(() => {
-    if (state !== "ready" || !mapRef.current || !window.mapkit || lastFitKeyRef.current === fitKey) {
-      return
-    }
+    if (state !== "ready" || !mapRef.current || !window.mapkit) return
 
     const annotations = [...annotationsRef.current.values()]
     if (!annotations.length) return
 
+    const fitNeeded = lastFitKeyRef.current !== fitKey || lastFitSignatureRef.current === ""
+    if (!fitNeeded) return
+
     mapRef.current.showItems(annotations, {
-      animate: true,
+      animate: lastFitKeyRef.current === fitKey,
       padding: new window.mapkit.Padding(96, 72, 120, 72),
     })
     lastFitKeyRef.current = fitKey
-  }, [fitKey, points.length, state])
-
-  useEffect(() => {
-    if (state !== "ready") return
-
-    for (const [key, annotation] of annotationsRef.current.entries()) {
-      annotation.color = markerColor(key, selectedProperty, winnerProperty)
-      annotation.selected = key === selectedProperty
-    }
-  }, [points, selectedProperty, state, winnerProperty])
+    lastFitSignatureRef.current = pinSignature
+  }, [fitKey, pinSignature, state])
 
   if (state === "error") {
     return (
-      <Empty className="border">
+      <Empty className="rw-property-map-fallback border">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <span className="rw-google-placeholder-dot" />
           </EmptyMedia>
           <EmptyTitle>Apple Maps failed to load</EmptyTitle>
           <EmptyDescription>
-            The search results still work, but the Apple Maps view could not initialize in this session.
+            Ranked stays still work. Map pins will return once Apple Maps is available in this environment.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
   }
 
-  if (!points.length) {
+  if (!mapMounted && !hasPoints) {
     return (
-      <Empty className="border">
+      <Empty className="rw-property-map-fallback border">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <span className="rw-google-placeholder-dot" />
@@ -197,6 +204,9 @@ export function PropertyMap({
     <div className="rw-property-map">
       <div className="rw-property-map-canvas" ref={containerRef} />
       {state === "loading" ? <span className="rw-map-loading">Loading price map…</span> : null}
+      {state === "ready" && !hasPoints ? (
+        <span className="rw-map-loading">Waiting for the first priced hotel…</span>
+      ) : null}
     </div>
   )
 }
