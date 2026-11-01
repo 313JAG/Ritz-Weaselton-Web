@@ -348,3 +348,231 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+.rw-trip-grid input {
+  height: 3.2rem;
+  border: 0;
+  background: transparent;
+  padding-inline: 0;
+  font-size: 1rem;
+  box-shadow: none;
+}
+
+.rw-trip-grid input:focus-visible {
+  box-shadow: none;
+}
+
+.rw-trip-grid .rw-submit {
+  height: 100%;
+  min-height: 6.45rem;
+  border-radius: 0;
+  padding-inline: 1.65rem;
+  font-size: 0.94rem;
+}
+
+.rw-rate-strip {
+  display: flex;
+  min-height: 4.35rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+}
+
+.rw-rate-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.rw-rate-summary > span:not(.rw-rate-icon) {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.rw-rate-summary small {
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rw-rate-summary strong {
+  overflow: hidden;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-rate-icon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--primary);
+}
+
+.rw-rate-preview {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 0.35rem;
+}
+
+.rw-rate-preview span {
+  border: 1px solid color-mix(in oklab, var(--border), transparent 20%);
+  border-radius: 999px;
+  padding: 0.28rem 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+}
+
+.rw-form-error {
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: 0.8rem 1rem;
+  color: var(--destructive);
+  font-size: 0.82rem;
+}
+
+.rw-recent-searches {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 2.5rem;
+}
+
+.rw-recent-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rw-recent-heading > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.rw-recent-heading span {
+  color: var(--muted-foreground);
+  font-size: 0.67rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rw-recent-heading strong {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.rw-recent-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.rw-recent-list button {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: rgba(255, 253, 248, 0.72);
+  padding: 0.9rem 1rem;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.rw-recent-list button:hover {
+  border-color: var(--ring);
+  transform: translateY(-1px);
+}
+
+.rw-recent-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-recent-list span {
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+}
+
+/* Map-first comparison */
+
+.rw-comparison {
+  display: grid;
+  width: 100%;
+  gap: 1rem;
+}
+
+.rw-comparison-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0 0.85rem;
+}
+
+.rw-comparison-head h1 {
+  margin: 0.3rem 0 0.15rem;
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
+  letter-spacing: -0.05em;
+}
+
+.rw-comparison-head h1 span,
+.rw-comparison-head > div:first-child > p:last-child {
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.rw-results-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.rw-run-status {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: #fbf5e9;
+  padding: 0.8rem 1rem;
+}
+
+.rw-run-status > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rw-run-status span,
+.rw-run-status summary {
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+}
+
+.rw-run-status summary {
+  width: max-content;
+  cursor: pointer;
+}
+
+.rw-progress-track {
+  height: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6d8c0;
+}
