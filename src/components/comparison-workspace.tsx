@@ -122,9 +122,9 @@ function RateDetail({ property, stayNights, showUnavailableRates, onToggleUnavai
                         <strong>{rate.label}</strong>
                         <small>{rate.company}</small>
                       </TableCell>
-                      <TableCell>{rate.available ? formatCurrency(rate.price, rate.currency) : "\u2014"}</TableCell>
+                      <TableCell>{rate.available ? formatCurrency(rate.price, rate.currency) : "—"}</TableCell>
                       <TableCell>
-                        {rate.available ? formatCurrency(rate.totalPrice ?? null, rate.currency) : "\u2014"}
+                        {rate.available ? formatCurrency(rate.totalPrice ?? null, rate.currency) : "—"}
                       </TableCell>
                       <TableCell>
                         {rate.available && rate.bookingUrl ? (
@@ -248,9 +248,9 @@ export function ComparisonWorkspace({
             <span>, {job.params.country}</span>
           </h1>
           <p>
-            {formatAustralianDate(job.params.checkIn)} \u2192 {formatAustralianDate(job.params.checkOut)} \u00b7{" "}
+            {formatAustralianDate(job.params.checkIn)} → {formatAustralianDate(job.params.checkOut)} ·{" "}
             {pricedPropertyCount}/{properties.length} priced
-            {isRunning ? " \u00b7 updating live" : ""}
+            {isRunning ? " · updating live" : ""}
           </p>
         </div>
         <div className="rw-results-actions">
@@ -276,7 +276,7 @@ export function ComparisonWorkspace({
           <div>
             <strong>Comparing Marriott rates</strong>
             <span>
-              {completed} of {total} codes \u00b7 pins update without resetting the map
+              {completed} of {total} codes · pins update without resetting the map
             </span>
           </div>
           <div className="rw-progress-track">
@@ -287,7 +287,7 @@ export function ComparisonWorkspace({
             <div className="rw-code-statuses">
               {codeProgress.map(({ code, status }) => (
                 <span className={cn(`is-${status}`)} key={code}>
-                  {status === "done" ? "\u2713" : status === "failed" ? "!" : status === "running" ? "\u2026" : "\u25cb"} {code}
+                  {status === "done" ? "✓" : status === "failed" ? "!" : status === "running" ? "…" : "○"} {code}
                 </span>
               ))}
             </div>
@@ -306,10 +306,10 @@ export function ComparisonWorkspace({
                 </span>
                 <strong>{cheapest.name}</strong>
                 <small>
-                  {formatCurrency(cheapest.bestPrice, cheapest.currency)} / night \u00b7 via{" "}
+                  {formatCurrency(cheapest.bestPrice, cheapest.currency)} / night · via{" "}
                   {cheapest.bestCodeLabel || "standard"}
                   {cheapest.savings > 0
-                    ? ` \u00b7 save ${formatCurrency(cheapest.savings, cheapest.currency)} vs standard`
+                    ? ` · save ${formatCurrency(cheapest.savings, cheapest.currency)} vs standard`
                     : ""}
                 </small>
               </div>
@@ -326,7 +326,7 @@ export function ComparisonWorkspace({
             <div className="rw-winner-strip is-waiting">
               <div className="rw-winner-strip-copy">
                 <span className="rw-winner-label">Lowest rate</span>
-                <strong>{isRunning ? "Searching live Marriott rates\u2026" : "No priced hotels yet"}</strong>
+                <strong>{isRunning ? "Searching live Marriott rates…" : "No priced hotels yet"}</strong>
                 <small>The cheapest stay appears here as soon as the first rate lands.</small>
               </div>
             </div>
@@ -357,9 +357,9 @@ export function ComparisonWorkspace({
                   <small>
                     {formatCurrency(active.bestPrice, active.currency)} nightly
                     {activeDelta
-                      ? ` \u00b7 +${formatCurrency(activeDelta, active.currency)}`
+                      ? ` · +${formatCurrency(activeDelta, active.currency)}`
                       : active.currency !== cheapest?.currency
-                        ? " \u00b7 different currency"
+                        ? " · different currency"
                         : ""}
                   </small>
                 </div>
@@ -456,7 +456,7 @@ export function ComparisonWorkspace({
                 <SheetTitle>{active.name}</SheetTitle>
                 <SheetDescription>
                   {active.brandName}
-                  {active.distance ? ` \u00b7 ${active.distance}` : ""}
+                  {active.distance ? ` · ${active.distance}` : ""}
                 </SheetDescription>
               </SheetHeader>
               <RateDetail
