@@ -1,1 +1,1 @@
-data:text/plain;base64,aW1wb3J0IHsgdXNlQ2FsbGJhY2sgfSBmcm9tICJyZWFjdCI=
+LOAD_FROM:/tmp/REAL_App.tsx
