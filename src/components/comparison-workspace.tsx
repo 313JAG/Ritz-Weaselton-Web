@@ -416,4 +416,60 @@ export function ComparisonWorkspace({
                           ? property.bestCodeLabel
                             ? `via ${property.bestCodeLabel}`
                             : "Best found"
-                          : delta =
+                          : delta === null
+                            ? property.bestPrice === null
+                              ? "No price"
+                              : "Different currency"
+                            : `+${formatCurrency(delta, property.currency)} / night`}
+                      </small>
+                    </span>
+                  </button>
+                  <Button
+                    aria-label={`View all rates for ${property.name}`}
+                    onClick={() => showDetails(property.key)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    Rates
+                  </Button>
+                </article>
+              )
+            })}
+            {!visibleProperties.length ? (
+              <p className="rw-no-alternatives">
+                {properties.length
+                  ? "No hotels match this filter."
+                  : isRunning
+                    ? "Hotels will appear here as rates return."
+                    : "No hotels found for this search."}
+              </p>
+            ) : null}
+          </div>
+        </aside>
+      </div>
+
+      <Sheet onOpenChange={setDetailOpen} open={detailOpen}>
+        <SheetContent className="rw-rate-sheet" side={isMobile ? "bottom" : "right"}>
+          {active ? (
+            <>
+              <SheetHeader>
+                <SheetTitle>{active.name}</SheetTitle>
+                <SheetDescription>
+                  {active.brandName}
+                  {active.distance ? ` · ${active.distance}` : ""}
+                </SheetDescription>
+              </SheetHeader>
+              <RateDetail
+                key={active.key}
+                onToggleUnavailable={onToggleUnavailable}
+                property={active}
+                showUnavailableRates={showUnavailableRates}
+                stayNights={stayNights}
+              />
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </section>
+  )
+}
