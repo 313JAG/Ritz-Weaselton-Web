@@ -197,4 +197,38 @@
 }
 
 .rw-brand-copy strong {
-  font-family: var(--font
+  font-family: var(--font-heading);
+  font-size: 1.18rem;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.rw-brand-copy small {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+}
+
+.rw-nav {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.rw-nav-item {
+  height: 2.6rem;
+  border-radius: 0.65rem;
+  font-size: 0.86rem;
+}
+
+.rw-nav-item svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.rw-rail-note {
+  display: flex;
+  max-width: 16rem;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted-
