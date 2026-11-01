@@ -1,1 +1,5 @@
-@file:/tmp/cssfull.txt
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/roboto-slab";
+@import "@fontsource-variable/roboto";
