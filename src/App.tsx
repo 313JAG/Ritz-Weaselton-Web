@@ -1,1 +1,1 @@
-LOAD:/tmp/FINAL_APP.tsx
+data:text/plain;base64,aW1wb3J0IHsgdXNlQ2FsbGJhY2sgfSBmcm9tICJyZWFjdCI=
