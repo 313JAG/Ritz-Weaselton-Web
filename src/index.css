@@ -664,4 +664,210 @@
 }
 
 .rw-winner-strip-actions {
-  display: f
+  display: flex;
+  flex: none;
+  gap: 0.45rem;
+}
+
+.rw-winner-strip-actions [data-slot="button"][data-variant="outline"] {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff8ec;
+}
+
+.rw-map-first-grid {
+  display: grid;
+  min-height: min(760px, calc(100vh - 8.5rem));
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 400px);
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--border);
+  box-shadow: 0 24px 60px rgba(70, 45, 20, 0.1);
+}
+
+.rw-map-canvas {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background: #e9e4da;
+}
+
+.rw-map-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rw-map-heading {
+  position: absolute;
+  z-index: 5;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  max-width: calc(100% - 2rem);
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border: 1px solid rgba(115, 84, 48, 0.2);
+  border-radius: 0.8rem;
+  background: rgba(255, 253, 247, 0.94);
+  padding: 0.75rem 0.9rem;
+  box-shadow: 0 12px 30px rgba(67, 49, 28, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.rw-map-heading > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.rw-map-heading strong {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+}
+
+.rw-map-heading > span {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.rw-property-map,
+.rw-property-map-canvas,
+.rw-property-map-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: min(560px, calc(100vh - 16rem));
+}
+
+.rw-property-map {
+  position: relative;
+}
+
+.rw-property-map-fallback {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  background: #efe8dc;
+}
+
+.rw-map-loading {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  border-radius: 999px;
+  background: rgba(255, 253, 247, 0.92);
+  padding: 0.55rem 0.8rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  transform: translate(-50%, -50%);
+}
+
+.rw-map-selection {
+  position: absolute;
+  z-index: 5;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(115, 84, 48, 0.2);
+  border-radius: 0.9rem;
+  background: rgba(255, 253, 247, 0.96);
+  padding: 0.85rem 0.95rem;
+  box-shadow: 0 18px 42px rgba(67, 49, 28, 0.16);
+  backdrop-filter: blur(14px);
+}
+
+.rw-map-selection > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.rw-map-selection span {
+  color: #87602d;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rw-map-selection strong {
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-map-selection small {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+}
+
+.rw-alternatives {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.8rem;
+  background: var(--card);
+  padding: 1rem;
+}
+
+.rw-alternatives-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rw-alternatives-head > div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.rw-alternatives-head span {
+  color: var(--muted-foreground);
+  font-size: 0.65rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.rw-alternatives-head strong {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+}
+
+.rw-alternative-list {
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+
+.rw-alternative-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-bottom: 1px solid color-mix(in oklab, var(--border), transparent 25%);
+  transition: background 140ms ease;
+}
+
+.rw-alternative-row:hover,
+.rw-alternative-row.is-selected {
+  background: #f7efe2;
+}
+
+.rw-alternative-row.is-selected {
+  box-shadow: inset 3px 0 #81392d;
+}
+
+.rw-alternative-row.is-cheapest {
+  background: color-mix(in oklab, #edf5ef, white 35%);
+}
+
+.rw-alte
