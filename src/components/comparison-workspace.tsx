@@ -212,4 +212,115 @@ export function ComparisonWorkspace({
 
   useEffect(() => {
     if (!active?.key || !listRef.current) return
-    const row = listRef.current.querySelector<HTMLElement>(`[data-pro
+    const row = listRef.current.querySelector<HTMLElement>(`[data-property-key="${CSS.escape(active.key)}"]`)
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [active?.key])
+
+  function showDetails(key: string) {
+    onSelect(key)
+    setDetailOpen(true)
+  }
+
+  if (!job) {
+    return (
+      <Empty className="rw-empty-results">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SparkleIcon />
+          </EmptyMedia>
+          <EmptyTitle>Ready when you are</EmptyTitle>
+          <EmptyDescription>Run a live comparison to see the cheapest stay and nearby choices.</EmptyDescription>
+        </EmptyHeader>
+        <Button onClick={onBack} variant="outline">
+          Start a search
+        </Button>
+      </Empty>
+    )
+  }
+
+  return (
+    <section className="rw-comparison">
+      <header className="rw-comparison-head">
+        <div>
+          <p className="rw-eyebrow">Results map</p>
+          <h1>
+            {job.params.city}
+            <span>, {job.params.country}</span>
+          </h1>
+          <p>
+            {formatAustralianDate(job.params.checkIn)} → {formatAustralianDate(job.params.checkOut)} ·{" "}
+            {pricedPropertyCount}/{properties.length} priced
+            {isRunning ? " · updating live" : ""}
+          </p>
+        </div>
+        <div className="rw-results-actions">
+          <Badge variant="secondary">{Math.max(job.params.codes.length - 1, 0)} codes</Badge>
+          <Button onClick={onBack} variant="outline">
+            Edit search
+          </Button>
+          {job.failedCodes.length ? (
+            <Button disabled={isSearching} onClick={onRetry} variant="outline">
+              <ArrowClockwiseIcon /> Retry failed
+            </Button>
+          ) : null}
+          {isRunning ? (
+            <Button onClick={onCancel} variant="outline">
+              Stop
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      {isRunning ? (
+        <div className="rw-run-status" aria-live="polite">
+          <div>
+            <strong>Comparing Marriott rates</strong>
+            <span>
+              {completed} of {total} codes · pins update without resetting the map
+            </span>
+          </div>
+          <div className="rw-progress-track">
+            <i style={{ width: `${Math.max(3, progress)}%` }} />
+          </div>
+          <details>
+            <summary>Code activity</summary>
+            <div className="rw-code-statuses">
+              {codeProgress.map(({ code, status }) => (
+                <span className={cn(`is-${status}`)} key={code}>
+                  {status === "done" ? "✓" : status === "failed" ? "!" : status === "running" ? "…" : "○"} {code}
+                </span>
+              ))}
+            </div>
+          </details>
+        </div>
+      ) : null}
+
+      <div className="rw-map-first-grid">
+        <article className="rw-map-canvas">
+          {cheapest ? (
+            <div className="rw-winner-strip">
+              <div className="rw-winner-strip-copy">
+                <span className="rw-winner-label">
+                  <SparkleIcon weight="fill" />
+                  Lowest {cheapest.currency || "comparable"} rate
+                </span>
+                <strong>{cheapest.name}</strong>
+                <small>
+                  {formatCurrency(cheapest.bestPrice, cheapest.currency)} / night · via{" "}
+                  {cheapest.bestCodeLabel || "standard"}
+                  {cheapest.savings > 0
+                    ? ` · save ${formatCurrency(cheapest.savings, cheapest.currency)} vs standard`
+                    : ""}
+                </small>
+              </div>
+              <div className="rw-winner-strip-actions">
+                <Button onClick={() => onSelect(cheapest.key)} size="sm" variant="outline">
+                  <MapPinIcon /> Focus
+                </Button>
+                <Button onClick={() => showDetails(cheapest.key)} size="sm">
+                  Rates
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="r
