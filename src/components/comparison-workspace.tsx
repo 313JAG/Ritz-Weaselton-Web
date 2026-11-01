@@ -90,3 +90,126 @@ function RateDetail({ property, stayNights, showUnavailableRates, onToggleUnavai
           {showMatrix ? "Hide rate details" : "See all rates"}
         </Button>
       </div>
+
+      {showMatrix ? (
+        <>
+          <Separator />
+          <div className="rw-matrix-head">
+            <div>
+              <strong>Every checked Marriott rate</strong>
+              <span>Marriott confirms taxes and fees at checkout.</span>
+            </div>
+            <Button onClick={onToggleUnavailable} size="sm" variant="ghost">
+              {showUnavailableRates ? "Available only" : "Show unavailable"}
+            </Button>
+          </div>
+          <div className="rw-rate-matrix">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rate</TableHead>
+                  <TableHead>Nightly</TableHead>
+                  <TableHead>Stay</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {property.rates
+                  .filter((rate) => showUnavailableRates || rate.available)
+                  .map((rate) => (
+                    <TableRow className={rate.code === property.bestCode ? "rw-winning-rate" : ""} key={rate.code}>
+                      <TableCell>
+                        <strong>{rate.label}</strong>
+                        <small>{rate.company}</small>
+                      </TableCell>
+                      <TableCell>{rate.available ? formatCurrency(rate.price, rate.currency) : "\u2014"}</TableCell>
+                      <TableCell>
+                        {rate.available ? formatCurrency(rate.totalPrice ?? null, rate.currency) : "\u2014"}
+                      </TableCell>
+                      <TableCell>
+                        {rate.available && rate.bookingUrl ? (
+                          <Button asChild size="sm" variant="ghost">
+                            <a href={rate.bookingUrl} rel="noreferrer" target="_blank">
+                              Book
+                            </a>
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+type Props = {
+  job: SearchJob | null
+  properties: PropertySummary[]
+  visibleProperties: PropertySummary[]
+  selectedProperty: string | null
+  propertyQuery: string
+  isSearching: boolean
+  codeProgress: CodeProgress[]
+  showUnavailableRates: boolean
+  onBack: () => void
+  onCancel: () => void
+  onRetry: () => void
+  onSelect: (key: string) => void
+  onPropertyQuery: (value: string) => void
+  onToggleUnavailable: () => void
+}
+
+export function ComparisonWorkspace({
+  job,
+  properties,
+  visibleProperties,
+  selectedProperty,
+  propertyQuery,
+  isSearching,
+  codeProgress,
+  showUnavailableRates,
+  onBack,
+  onCancel,
+  onRetry,
+  onSelect,
+  onPropertyQuery,
+  onToggleUnavailable,
+}: Props) {
+  const [detailOpen, setDetailOpen] = useState(false)
+  const isMobile = useIsMobile()
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const cheapest = properties.find((property) => property.bestPrice !== null) || null
+  const active = properties.find((property) => property.key === selectedProperty) || cheapest || properties[0] || null
+  const propertyRanks = useMemo(
+    () => new Map(properties.map((property, index) => [property.key, index + 1])),
+    [properties],
+  )
+  const stayNights = Math.max(
+    1,
+    Math.round(
+      (new Date(`${job?.params.checkOut || ""}T12:00:00`).getTime() -
+        new Date(`${job?.params.checkIn || ""}T12:00:00`).getTime()) /
+        86400000,
+    ) || 1,
+  )
+  const completed = job?.progress?.completedCodes || 0
+  const total = job?.progress?.totalCodes || 0
+  const progress = total ? Math.round((completed / total) * 100) : 0
+  const pricedPropertyCount = properties.filter((property) => property.bestPrice !== null).length
+  const mappablePropertyCount = properties.filter(
+    (property) =>
+      property.bestPrice !== null &&
+      typeof property.latitude === "number" &&
+      typeof property.longitude === "number",
+  ).length
+  const activeDelta = active ? priceDelta(active, cheapest) : null
+  const isRunning = Boolean(job && job.status !== "completed" && job.status !== "cancelled")
+  const showMapSelection = Boolean(active && mappablePropertyCount > 0 && active.key !== cheapest?.key)
+
+  useEffect(() => {
+    if (!active?.key || !listRef.current) return
+    const row = listRef.current.querySelector<HTMLElement>(`[data-pro
