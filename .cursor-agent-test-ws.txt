@@ -1,0 +1,1 @@
+workspace://.mcp_content_test.txt
