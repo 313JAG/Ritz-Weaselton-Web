@@ -1070,4 +1070,245 @@
   background: #f5ead5;
 }
 
-.rw-winning-rate td:fi
+.rw-winning-rate td:first-child strong {
+  color: #7e3027;
+}
+
+@media (max-width: 1180px) {
+  .rw-rail-note {
+    display: none;
+  }
+
+  .rw-trip-grid {
+    grid-template-columns: minmax(240px, 1.5fr) minmax(145px, 0.8fr) minmax(
+        145px,
+        0.8fr
+      );
+  }
+
+  .rw-trip-grid .rw-submit {
+    min-height: 3.5rem;
+    grid-column: 1 / -1;
+  }
+
+  .rw-map-first-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  }
+}
+
+@media (max-width: 920px) {
+  .rw-topbar {
+    min-height: auto;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .rw-brand {
+    gap: 0.55rem;
+  }
+
+  .rw-brand-logo {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .rw-brand-copy small {
+    display: none;
+  }
+
+  .rw-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .rw-nav-item {
+    width: auto;
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .rw-comparison-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rw-results-actions {
+    justify-content: flex-start;
+  }
+
+  .rw-map-first-grid {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .rw-property-map,
+  .rw-property-map-canvas {
+    min-height: 560px;
+  }
+
+  .rw-alternatives {
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 700px) {
+  .rw-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .rw-nav-item {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+
+  .rw-stage {
+    padding: 0.85rem;
+  }
+
+  .rw-search-masthead {
+    padding: 2.25rem 0 2rem;
+  }
+
+  .rw-search-masthead h1 {
+    font-size: clamp(2.65rem, 13vw, 4.2rem);
+  }
+
+  .rw-trip-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rw-destination-field,
+  .rw-trip-grid .rw-submit {
+    grid-column: 1 / -1;
+  }
+
+  .rw-trip-grid .rw-submit {
+    min-height: 3.6rem;
+  }
+
+  .rw-rate-strip {
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .rw-rate-summary {
+    flex: 1;
+  }
+
+  .rw-rate-preview {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .rw-recent-list {
+    grid-template-columns: 1fr;
+  }
+
+  .rw-comparison-head h1 {
+    font-size: 2rem;
+  }
+
+  .rw-winner-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rw-winner-strip-actions {
+    width: 100%;
+  }
+
+  .rw-winner-strip-actions > * {
+    flex: 1;
+  }
+
+  .rw-property-map,
+  .rw-property-map-canvas {
+    min-height: 56vh;
+  }
+
+  .rw-map-heading {
+    right: 0.75rem;
+    left: 0.75rem;
+    max-width: none;
+  }
+
+  .rw-map-heading > span {
+    display: none;
+  }
+
+  .rw-map-selection {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .rw-alternatives {
+    max-height: none;
+    padding: 0.85rem;
+  }
+
+  .rw-alternative-list {
+    display: grid;
+    grid-auto-columns: minmax(275px, 84vw);
+    grid-auto-flow: column;
+    gap: 0.65rem;
+    overflow-x: auto;
+    border-top: 0;
+    padding-bottom: 0.35rem;
+    scroll-snap-type: x mandatory;
+  }
+
+  .rw-alternative-row {
+    align-self: stretch;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    scroll-snap-align: start;
+  }
+
+  .rw-rate-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh;
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .rw-sheet-price {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .rw-brand-copy strong {
+    font-size: 1rem;
+  }
+
+  .rw-nav-item {
+    padding-inline: 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .rw-trip-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rw-destination-field,
+  .rw-trip-grid .rw-submit {
+    grid-column: auto;
+  }
+
+  .rw-winner-strip-copy strong,
+  .rw-winner-strip-copy small {
+    white-space: normal;
+  }
+
+  .rw-map-selection {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
