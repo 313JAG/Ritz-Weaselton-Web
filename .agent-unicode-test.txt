@@ -1,1 +1,0 @@
-dash:— arrow:→ dot:· check:✓ ellipsis:… circ:○
